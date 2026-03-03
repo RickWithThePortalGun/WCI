@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-950: #030805;
+  --bg-900: #060f07;
+  --bg-800: #0a1a0c;
+  --bg-700: #0f2410;
+  --border: #1a3a1a;
+  --text-muted: #3a6a4a;
+  --text-dim: #5a8a6a;
+  --text-base: #8aaa8a;
+  --accent-red: #ff2200;
+  --accent-orange: #ff6600;
+  --accent-amber: #ffaa00;
+  --accent-green: #44ff88;
+  --accent-blue: #44aaff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg-950);
+  color: var(--text-base);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-900); }
+::-webkit-scrollbar-thumb { background: #1a4a2a; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2a6a3a; }
+
+/* Scanline effect */
+.scanlines::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.025) 2px,
+    rgba(0, 0, 0, 0.025) 4px
+  );
+}
+
+/* CRT glow on text */
+.glow-red { text-shadow: 0 0 8px rgba(255, 34, 0, 0.6); }
+.glow-amber { text-shadow: 0 0 8px rgba(255, 170, 0, 0.6); }
+.glow-green { text-shadow: 0 0 8px rgba(68, 255, 136, 0.4); }
+
+/* Panel */
+.panel {
+  background: var(--bg-900);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.panel-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Alert badges */
+.badge-critical { background: rgba(255, 34, 0, 0.15); border: 1px solid #ff2200; color: #ff4422; }
+.badge-high { background: rgba(255, 102, 0, 0.12); border: 1px solid #ff6600; color: #ff8833; }
+.badge-med { background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; color: #ffcc44; }
+.badge-low { background: rgba(68, 170, 255, 0.1); border: 1px solid #44aaff; color: #66bbff; }
+
+/* News card hover */
+.article-card {
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+.article-card:hover {
+  border-color: #2a5a3a;
+  background: var(--bg-800);
+}
+
+/* Ticker */
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+.ticker-text {
+  display: inline-block;
+  animation: ticker-slide 300s linear infinite;
+  will-change: transform;
+}
+.ticker-text:hover { animation-play-state: paused; }
+
+@keyframes ticker-slide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Globe container */
+.globe-container canvas {
+  border-radius: 50%;
+}
+
+/* Severity bar */
+.severity-bar {
+  height: 3px;
+  border-radius: 2px;
+  transition: width 1s ease;
+}
+
+/* Custom select */
+select {
+  background: var(--bg-800);
+  border: 1px solid var(--border);
+  color: var(--text-base);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+/* Tab active */
+.tab-active {
+  background: rgba(255, 68, 0, 0.15);
+  border-bottom: 2px solid var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+/* Pulse dot */
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+}
+.pulse-dot { animation: pulseDot 1.2s ease-in-out infinite; }
+
+/* Slow pulse for active tab indicator */
+@keyframes pulseSlow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+.animate-pulse-slow { animation: pulseSlow 2s ease-in-out infinite; }
+
+/* Loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #0a1a0c 25%, #0f2410 50%, #0a1a0c 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}

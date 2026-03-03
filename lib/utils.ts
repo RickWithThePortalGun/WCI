@@ -29,14 +29,72 @@ export function analyzeSentiment(text: string): number {
   return Math.max(-1, Math.min(1, score));
 }
 
-export function computeEscalationScore(title: string, desc: string): number {
-  const HIGH = ['nuclear', 'missile', 'bomb', 'killed', 'attack', 'explosion', 'war', 'strike', 'troops', 'invasion', 'offensive', 'ceasefire violated'];
-  const MED = ['tension', 'military', 'clash', 'conflict', 'sanction', 'troops', 'deploy', 'protest'];
-  const text = `${title} ${desc}`.toLowerCase();
-  let score = 3;
-  for (const w of HIGH) if (text.includes(w)) score += 1.2;
-  for (const w of MED) if (text.includes(w)) score += 0.5;
-  return Math.min(10, parseFloat(score.toFixed(1)));
+export function computeEscalationScore(title: string, desc: string, sentiment?: number): number {
+  // Critical phrases (highest weight) - must match exactly
+  const CRITICAL_PHRASES = [
+    'nuclear war', 'nuclear weapon', 'nuclear strike', 'nuclear attack',
+    'mass casualty', 'mass killing', 'genocide', 'ethnic cleansing',
+    'full scale war', 'world war', 'declared war',
+    'chemical weapon', 'biological weapon',
+    'ceasefire violated', 'peace deal broken'
+  ];
+  
+  // High severity words (count frequency, not just presence)
+  const HIGH = ['nuclear', 'missile', 'bomb', 'killed', 'attack', 'explosion', 'war', 'strike', 'invasion', 'offensive', 'casualties', 'massacre', 'siege', 'bombardment', 'shelling', 'artillery'];
+  
+  // Medium severity words
+  const MED = ['tension', 'military', 'clash', 'conflict', 'sanction', 'troops', 'deploy', 'protest', 'violence', 'fighting', 'combat', 'skirmish'];
+  
+  // Lower severity indicators
+  const LOW = ['diplomatic', 'talks', 'negotiation', 'meeting', 'summit'];
+  
+  const titleLower = title.toLowerCase();
+  const descLower = desc.toLowerCase();
+  const fullText = `${titleLower} ${descLower}`;
+  
+  let score = 2.5; 
+  
+  // Check for critical phrases (highest weight, title weighted 3x)
+  for (const phrase of CRITICAL_PHRASES) {
+    const inTitle = titleLower.includes(phrase);
+    const inDesc = descLower.includes(phrase);
+    if (inTitle) score += 2.5; // Critical phrase in title is very serious
+    if (inDesc) score += 1.0;
+  }
+  
+  // Count frequency of high-severity words (title weighted 2x)
+  for (const word of HIGH) {
+    const titleMatches = (titleLower.match(new RegExp(`\\b${word}\\w*`, 'g')) || []).length;
+    const descMatches = (descLower.match(new RegExp(`\\b${word}\\w*`, 'g')) || []).length;
+    score += (titleMatches * 1.0) + (descMatches * 0.4); // Title words worth more
+  }
+  
+  // Count medium-severity words (less weight)
+  for (const word of MED) {
+    const titleMatches = (titleLower.match(new RegExp(`\\b${word}\\w*`, 'g')) || []).length;
+    const descMatches = (descLower.match(new RegExp(`\\b${word}\\w*`, 'g')) || []).length;
+    score += (titleMatches * 0.4) + (descMatches * 0.2);
+  }
+  
+  // Reduce score for de-escalation words
+  for (const word of LOW) {
+    if (fullText.includes(word)) score -= 0.3;
+  }
+  
+  if (sentiment !== undefined) {
+    if (sentiment < -0.3) score += 0.8; // Very negative = more serious
+    else if (sentiment < -0.1) score += 0.4;
+    else if (sentiment > 0.2) score -= 0.5; // Positive sentiment reduces escalation
+  }
+  
+  const highWordCount = HIGH.reduce((count, word) => {
+    return count + (fullText.includes(word) ? 1 : 0);
+  }, 0);
+  if (highWordCount >= 3) score += 0.8; // Multiple indicators = more serious
+  if (highWordCount >= 5) score += 0.5; // Many indicators = even more serious
+  
+  // Clamp to 0-10 and round
+  return Math.max(0, Math.min(10, parseFloat(score.toFixed(1))));
 }
 
 export function stripHtml(str: string): string {

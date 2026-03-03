@@ -3,6 +3,7 @@ import Parser from 'rss-parser';
 import type { NewsArticle } from '@/lib/types';
 import { RSS_FEEDS } from '@/lib/constants';
 import { generateId, classifyTags, classifyRegion, analyzeSentiment, computeEscalationScore, stripHtml, truncate } from '@/lib/utils';
+import { getAIScore, getArticleHash, getCachedScore, setCachedScore } from '../escalation-score/route';
 
 type CustomItem = {
   'media:thumbnail': { $: { url: string } };
@@ -31,16 +32,45 @@ function extractImage(item: any): string | undefined {
   );
 }
 
+async function getAIScoreWithFallback(title: string, description: string, sentiment: number): Promise<number> {
+  // Only use AI if API key is configured
+  if (!process.env.OPENAI_API_KEY) {
+    return computeEscalationScore(title, description, sentiment);
+  }
+
+  // Check cache first
+  const hash = getArticleHash(title, description);
+  const cached = getCachedScore(hash);
+  if (cached !== null) {
+    return cached;
+  }
+
+  // Try AI scoring
+  try {
+    const score = await getAIScore(title, description);
+    setCachedScore(hash, score);
+    return score;
+  } catch (error) {
+    // Fallback to rule-based scoring on error
+    return computeEscalationScore(title, description, sentiment);
+  }
+}
+
 async function fetchFeed(feed: typeof RSS_FEEDS[number]): Promise<NewsArticle[]> {
   const parsed = await parser.parseURL(feed.url);
-  return parsed.items.slice(0, 12).map(item => {
+  const items = parsed.items.slice(0, 12);
+  
+  // First pass: create articles with rule-based scores
+  const articles = items.map(item => {
     const text = `${item.title ?? ''} ${stripHtml(item.contentSnippet ?? item.content ?? '')}`;
     const tags = classifyTags(text);
     const region = classifyRegion(tags);
     const description = truncate(stripHtml(item.contentSnippet ?? item.summary ?? ''), 240);
+    const title = stripHtml(item.title ?? '');
+    const sentiment = analyzeSentiment(text);
     return {
       id: generateId(),
-      title: stripHtml(item.title ?? ''),
+      title,
       description,
       link: item.link ?? '',
       pubDate: item.isoDate ?? item.pubDate ?? new Date().toISOString(),
@@ -49,10 +79,27 @@ async function fetchFeed(feed: typeof RSS_FEEDS[number]): Promise<NewsArticle[]>
       image: extractImage(item),
       tags,
       region,
-      sentiment: analyzeSentiment(text),
-      escalationScore: computeEscalationScore(item.title ?? '', description),
+      sentiment,
+      escalationScore: computeEscalationScore(title, description, sentiment), // Temporary rule-based score
     } satisfies NewsArticle;
   });
+  
+  // Second pass: enhance with AI scores (batch, with fallback)
+  const scorePromises = articles.map(article => 
+    getAIScoreWithFallback(article.title, article.description, article.sentiment)
+      .then(score => ({ article, score }))
+      .catch(() => ({ article, score: article.escalationScore })) // Keep rule-based on error
+  );
+  
+  const results = await Promise.allSettled(scorePromises);
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      articles[index].escalationScore = result.value.score;
+    }
+    // If failed, keep the rule-based score already set
+  });
+  
+  return articles;
 }
 
 export async function GET(request: Request) {

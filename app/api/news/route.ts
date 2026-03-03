@@ -3,7 +3,7 @@ import Parser from 'rss-parser';
 import type { NewsArticle } from '@/lib/types';
 import { RSS_FEEDS } from '@/lib/constants';
 import { generateId, classifyTags, classifyRegion, analyzeSentiment, computeEscalationScore, stripHtml, truncate } from '@/lib/utils';
-import { getAIScore, getArticleHash, getCachedScore, setCachedScore } from '../escalation-score/route';
+import { getAIScore, getArticleHash, getCachedScore, setCachedScore } from '@/lib/escalation-cache';
 
 type CustomItem = {
   'media:thumbnail': { $: { url: string } };

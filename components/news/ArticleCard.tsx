@@ -85,7 +85,7 @@ export default function ArticleCard({ article, index, compact }: Props) {
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0a1a0c] to-[#060f07] border-b border-[#1a3a1a]">
               <div className="font-display text-4xl sm:text-5xl text-[#1a3a1a] tracking-[8px] font-bold" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
-                WWC
+                WCI
               </div>
             </div>
           )}

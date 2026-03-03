@@ -2,6 +2,12 @@
 
 **Real-time geopolitical intelligence dashboard** — a full-stack Next.js application aggregating global conflict news from multiple authoritative sources, with an interactive 3D globe, live escalation analytics, YouTube news integration, and optional AI-powered briefings.
 
+[![GitHub](https://img.shields.io/github/license/RickWithThePortalGun/WCI)](LICENSE)
+[![GitHub forks](https://img.shields.io/github/forks/RickWithThePortalGun/WCI?style=social)](https://github.com/RickWithThePortalGun/WCI/fork)
+[![GitHub stars](https://img.shields.io/github/stars/RickWithThePortalGun/WCI?style=social)](https://github.com/RickWithThePortalGun/WCI)
+
+> **💡 Want to contribute?** [Fork this repository](https://github.com/RickWithThePortalGun/WCI/fork) and submit a pull request!
+
 ---
 
 ## Features
@@ -142,9 +148,36 @@ Add `OPENAI_API_KEY=sk-...` to `.env.local` to enable the AI Digest feature. It 
 
 ---
 
+## Contributing
+
+We welcome contributions! Here's how you can help:
+
+1. **Fork the repository** — Click the "Fork" button at the top of this page
+2. **Create a feature branch** — `git checkout -b feature/amazing-feature`
+3. **Make your changes** — Add features, fix bugs, or improve documentation
+4. **Commit your changes** — `git commit -m 'Add some amazing feature'`
+5. **Push to your fork** — `git push origin feature/amazing-feature`
+6. **Open a Pull Request** — We'll review and merge your changes!
+
+### Ideas for Contributions
+- Add more news sources or RSS feeds
+- Improve the escalation scoring algorithm
+- Add new conflict zones or update existing ones
+- Enhance the UI/UX
+- Fix bugs or improve performance
+- Add tests or improve documentation
+
+---
+
 ## Disclaimer
 
 All data comes from public, open-source news feeds. This platform is for **informational and educational purposes only**. Content reflects what major international news organizations are reporting. The escalation scores and sentiment analysis are algorithmic estimates, not editorial judgments.
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

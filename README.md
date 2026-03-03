@@ -17,7 +17,7 @@
 | **Live RSS Aggregation** | 7 news sources: BBC, Al Jazeera, Reuters, The Guardian, DW, France 24, RFI |
 | **YouTube Integration** | 6 news channels via YouTube RSS feeds (no API key needed) |
 | **Interactive 3D Globe** | 14 active conflict zones with severity rings, click for intel |
-| **Escalation Index** | Real-time scoring of news content by conflict severity |
+| **AI-Powered Escalation Index** | GPT-4o-mini scoring with 24h caching + rule-based fallback |
 | **Source Triangulation** | Same event cross-referenced across multiple outlets + editorial bias |
 | **AI Intelligence Brief** | OpenAI-powered synthesis of breaking news (optional API key) |
 | **Conflict Timeline** | Chronological event view with expandable detail |
@@ -51,6 +51,7 @@ app/
 ├── api/
 │   ├── news/route.ts        → RSS aggregator (7 sources, proxied for CORS)
 │   ├── youtube/route.ts     → YouTube channel RSS feeds
+│   ├── escalation-score/route.ts → AI-powered escalation scoring with caching
 │   └── ai-digest/route.ts  → OpenAI API for intelligence briefings
 ├── layout.tsx               → Root layout with fonts + meta
 └── page.tsx                 → Entry point
@@ -112,10 +113,23 @@ lib/
 ## Intelligence Algorithms
 
 ### Escalation Score (0-10)
-Computed per article from keyword frequency:
-- HIGH keywords: `nuclear, missile, killed, attack, explosion, war, invasion` (+1.2 each)
-- MED keywords: `tension, military, deploy, clash, conflict, sanction` (+0.5 each)
-- Capped at 10
+**AI-Powered with Smart Caching**
+
+The system uses GPT-4o-mini for context-aware escalation scoring, with intelligent caching to ensure speed and cost-efficiency:
+
+1. **Cache Check**: Articles are hashed by content. If scored within 24 hours, cached score is returned instantly (no API call)
+2. **AI Scoring**: New articles are analyzed by GPT-4o-mini, which considers:
+   - Context and nuance (not just keywords)
+   - Severity levels: 0-2 (peaceful), 3-4 (tensions), 5-6 (active conflict), 7-8 (major operations), 9-10 (nuclear/genocide/full war)
+   - Article title vs description importance
+3. **Rule-Based Fallback**: If AI is unavailable or fails, uses enhanced rule-based scoring:
+   - **Critical phrases**: `nuclear war`, `genocide`, `mass casualty` (+2.5 in title, +1.0 in desc)
+   - **High keywords**: `nuclear, missile, bomb, killed, attack, war, invasion` (frequency-based, title weighted 2x)
+   - **Medium keywords**: `tension, military, clash, conflict, sanction` (frequency-based)
+   - **De-escalation words**: `diplomatic, talks, negotiation` (-0.3 each)
+   - **Sentiment integration**: Negative sentiment amplifies, positive reduces
+   - **Compound bonus**: Multiple high-severity indicators increase score
+4. **Performance**: Cached articles return instantly; new articles ~200-500ms per article
 
 ### Sentiment Analysis
 Simple lexicon-based scoring from -1 (very negative) to +1 (very positive):
@@ -127,12 +141,24 @@ Articles grouped by topic using keyword matching → cross-referenced with edito
 
 ---
 
-## Optional: AI Intelligence Briefings
+## Optional: AI Features
 
-Add `OPENAI_API_KEY=sk-...` to `.env.local` to enable the AI Digest feature. It sends the top 15 high-escalation headlines to OpenAI and returns:
+Add `OPENAI_API_KEY=sk-...` to `.env.local` to enable AI-powered features:
+
+### AI Escalation Scoring
+- Uses GPT-4o-mini for context-aware conflict severity analysis
+- **24-hour caching**: Once an article is scored, it's cached for 24 hours (no repeated API calls)
+- **Smart fallback**: If AI fails or API key is missing, uses enhanced rule-based scoring
+- **Cost-effective**: ~$0.15 per 1M tokens (very cheap for scoring)
+- **Fast**: Cached articles return instantly; new articles processed in parallel
+
+### AI Intelligence Briefings
+Sends the top 15 high-escalation headlines to OpenAI and returns:
 - Situation overview paragraph
 - 3-5 key event bullets
 - Single-sentence risk assessment
+
+**Note**: The system works perfectly without an API key - it will use rule-based escalation scoring instead.
 
 ---
 
@@ -161,11 +187,13 @@ We welcome contributions! Here's how you can help:
 
 ### Ideas for Contributions
 - Add more news sources or RSS feeds
-- Improve the escalation scoring algorithm
+- Improve the AI escalation scoring prompts or rule-based fallback
+- Add persistent caching (Redis/database) for multi-instance deployments
 - Add new conflict zones or update existing ones
 - Enhance the UI/UX
 - Fix bugs or improve performance
 - Add tests or improve documentation
+- Optimize AI scoring batch processing
 
 ---
 

@@ -9,6 +9,7 @@ flowchart TB
     %% API Routes
     NewsAPI[/api/news<br/>GET Request]
     YTAPI[/api/youtube<br/>GET Request]
+    EscalationAPI[/api/escalation-score<br/>POST Request<br/>AI Scoring + Cache]
     
     %% Processing Pipeline
     ParseRSS[RSS Parser<br/>Extract Items]
@@ -18,7 +19,8 @@ flowchart TB
     ClassifyTags[classifyTags<br/>Match keywords to<br/>conflict tags]
     ClassifyRegion[classifyRegion<br/>Map tags to regions]
     AnalyzeSentiment[analyzeSentiment<br/>Scan for positive/negative<br/>keywords]
-    ComputeEscalation[computeEscalationScore<br/>Base: 3.0<br/>+1.2 per HIGH word<br/>+0.5 per MED word<br/>Clamp to 0-10]
+    ComputeEscalation[computeEscalationScore<br/>Rule-based fallback<br/>Frequency + sentiment]
+    AIScoring[AI Escalation Scoring<br/>GPT-4o-mini<br/>Cached 24h]
     
     %% Data Processing
     Dedupe[Deduplicate Articles<br/>By title similarity]
@@ -54,7 +56,12 @@ flowchart TB
     ParseRSS --> ClassifyTags
     ClassifyTags --> ClassifyRegion
     ClassifyTags --> AnalyzeSentiment
-    ClassifyTags --> ComputeEscalation
+    
+    AnalyzeSentiment --> EscalationAPI
+    EscalationAPI -->|Cache Hit| ComputeEscalation
+    EscalationAPI -->|Cache Miss| AIScoring
+    AIScoring -->|Success| ComputeEscalation
+    AIScoring -->|Error| ComputeEscalation
     
     ComputeEscalation --> Dedupe
     Dedupe --> Filter
@@ -100,34 +107,45 @@ flowchart TB
     classDef data fill:#030805,stroke:#ffaa00,stroke-width:2px,color:#ffcc44
     
     class RSS,YT data
-    class NewsAPI,YTAPI api
-    class ParseRSS,ParseYT,ClassifyTags,ClassifyRegion,AnalyzeSentiment,ComputeEscalation,Dedupe,Filter,Sort process
+    class NewsAPI,YTAPI,EscalationAPI api
+    class ParseRSS,ParseYT,ClassifyTags,ClassifyRegion,AnalyzeSentiment,ComputeEscalation,AIScoring,Dedupe,Filter,Sort process
     class Dashboard,SWR,TabDash,TabGlobe,TabNews,TabVideos,TabAnalysis,NewsFeed,ArticleCard,VideoPanel,ConflictGlobe,EscalationChart,AIDigest,ConflictTimeline,SourceTriangulation ui
 ```
 
-## Severity Calculation Flow
+## Escalation Score Calculation Flow
 
 ```mermaid
-flowchart LR
-    Start[Article Title + Description] --> Lower[Convert to Lowercase]
-    Lower --> Scan[Scan Text for Keywords]
+flowchart TD
+    Start[Article Title + Description] --> CheckCache{Check Cache<br/>24h TTL}
     
-    Scan --> HighWords{High Severity Words?<br/>nuclear, missile, bomb,<br/>killed, attack, war,<br/>strike, invasion, etc.}
-    Scan --> MedWords{Medium Severity Words?<br/>tension, military, clash,<br/>conflict, sanction,<br/>deploy, protest}
+    CheckCache -->|Cache Hit| CachedScore[Return Cached Score<br/>Instant]
+    CheckCache -->|Cache Miss| HasAPIKey{OPENAI_API_KEY<br/>Configured?}
     
-    HighWords -->|Found| AddHigh[+1.2 per match]
-    MedWords -->|Found| AddMed[+0.5 per match]
+    HasAPIKey -->|Yes| AIScoring[GPT-4o-mini Analysis<br/>Context-aware scoring<br/>0.0-10.0]
+    HasAPIKey -->|No| RuleBased[Rule-Based Scoring]
     
-    AddHigh --> Sum[Sum Scores]
-    AddMed --> Sum
-    Sum --> Base[Start from Base: 3.0]
-    Base --> Clamp[Clamp to 0-10]
+    AIScoring -->|Success| CacheResult[Cache Result<br/>24h TTL]
+    AIScoring -->|Error/Timeout| RuleBased
+    
+    RuleBased --> Frequency[Count Keyword Frequency<br/>Title: 2x weight<br/>Description: 1x weight]
+    Frequency --> CriticalPhrases[Check Critical Phrases<br/>nuclear war, genocide,<br/>mass casualty, etc.]
+    CriticalPhrases --> HighWords[High Severity Words<br/>nuclear, missile, bomb,<br/>killed, attack, war, etc.<br/>+1.0 per title match<br/>+0.4 per desc match]
+    HighWords --> MedWords[Medium Severity Words<br/>tension, military, clash,<br/>conflict, sanction, etc.<br/>+0.4 per title match<br/>+0.2 per desc match]
+    MedWords --> DeEscalate[De-escalation Words<br/>diplomatic, talks,<br/>negotiation, etc.<br/>-0.3 per match]
+    DeEscalate --> Sentiment[Integrate Sentiment<br/>Negative: +0.8<br/>Positive: -0.5]
+    Sentiment --> Compound[Compound Bonus<br/>3+ high words: +0.8<br/>5+ high words: +1.3]
+    Compound --> Clamp[Clamp to 0-10]
+    
+    CacheResult --> Clamp
     Clamp --> Round[Round to 1 decimal]
-    Round --> Score[Final Escalation Score<br/>0.0 - 10.0]
+    Round --> FinalScore[Final Escalation Score<br/>0.0 - 10.0]
+    CachedScore --> FinalScore
     
-    style HighWords fill:#ff2200,stroke:#ff4400,color:#fff
-    style MedWords fill:#ff8800,stroke:#ffaa00,color:#fff
-    style Score fill:#44ff88,stroke:#66ccaa,color:#030805
+    style CheckCache fill:#44aaff,stroke:#66bbff,color:#fff
+    style AIScoring fill:#ff4400,stroke:#ff6600,color:#fff
+    style RuleBased fill:#ff8800,stroke:#ffaa00,color:#fff
+    style FinalScore fill:#44ff88,stroke:#66ccaa,color:#030805
+    style CacheResult fill:#44aaff,stroke:#66bbff,color:#fff
 ```
 
 ## Component Hierarchy

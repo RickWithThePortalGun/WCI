@@ -66,7 +66,11 @@ export default function Dashboard() {
       {activeTab !== 'globe' && <StatsBar articles={articles} />}
 
       {/* Main content with bottom padding for mobile floating tab */}
-      <div className="flex-1 overflow-y-auto pb-20 sm:pb-0">
+      <div
+        className={`flex-1 overflow-y-auto sm:pb-0 ${
+          activeTab === 'dashboard' || activeTab === 'globe' ? 'pb-20' : 'pb-6'
+        }`}
+      >
         {/* ── DASHBOARD TAB  */}
         {activeTab === 'dashboard' && (
           <div className="min-h-full overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 lg:divide-x divide-[#1a3a1a] lg:h-full">
@@ -145,28 +149,28 @@ export default function Dashboard() {
 
         {/* ── GLOBE TAB */}
         {activeTab === 'globe' && (
-          <div className="h-full overflow-hidden relative">
+          <div className="relative lg:h-full lg:overflow-hidden">
             <ConflictGlobe onSelectZone={setSelectedZone} selectedZone={selectedZone} />
           </div>
         )}
 
         {/* ── INTELLIGENCE TAB */}
         {activeTab === 'news' && (
-          <div className="h-full overflow-hidden p-4">
+          <div className="p-4 lg:h-full lg:overflow-hidden">
             <NewsFeed articles={articles} loading={newsLoading} />
           </div>
         )}
 
         {/* ── VIDEOS TAB  */}
         {activeTab === 'videos' && (
-          <div className="h-full overflow-hidden p-4">
+          <div className="p-4 lg:h-full lg:overflow-hidden">
             <VideoPanel videos={videos} loading={ytLoading} />
           </div>
         )}
 
         {/* ── ANALYSIS TAB  */}
         {activeTab === 'analysis' && (
-          <div className="h-full overflow-hidden grid grid-cols-1 lg:grid-cols-12 divide-x-0 lg:divide-x divide-[#1a3a1a]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 divide-x-0 lg:divide-x divide-[#1a3a1a] lg:h-full lg:overflow-hidden">
 
           {/* Timeline */}
           <div className="lg:col-span-5 flex flex-col overflow-hidden border-r-0 lg:border-r border-[#1a3a1a]">

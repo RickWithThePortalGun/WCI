@@ -69,7 +69,7 @@ export default function Dashboard() {
       <div className="flex-1 overflow-y-auto pb-20 sm:pb-0">
         {/* ── DASHBOARD TAB  */}
         {activeTab === 'dashboard' && (
-          <div className="h-full overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 lg:divide-x divide-[#1a3a1a]">
+          <div className="min-h-full overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 lg:divide-x divide-[#1a3a1a] lg:h-full">
 
           {/* Left: Globe + Risk */}
           <div className="lg:col-span-4 flex flex-col divide-y divide-[#1a3a1a] overflow-hidden">
@@ -110,11 +110,11 @@ export default function Dashboard() {
           </div>
 
           {/* Right: AI Digest + Videos */}
-          <div className="lg:col-span-3 flex flex-col divide-y divide-[#1a3a1a] overflow-hidden">
-            <div className="overflow-hidden h-[320px] lg:h-auto lg:flex-1">
+          <div className="lg:col-span-3 flex flex-col divide-y divide-[#1a3a1a] overflow-hidden min-h-[calc(100vh-480px)] sm:min-h-[calc(100vh-420px)] lg:min-h-0 lg:h-auto">
+            <div className="overflow-hidden h-[320px] lg:h-auto lg:flex-1 flex-shrink-0">
               <AIDigest articles={articles} />
             </div>
-            <div className="flex-1 overflow-hidden flex flex-col min-h-[200px]">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-[200px] lg:min-h-0">
               <div className="panel-header flex-shrink-0">
                 <span>VIDEO INTEL</span>
                 <span className="text-[#3a6a4a] text-[8px]">{videos.length} CLIPS</span>
@@ -211,12 +211,11 @@ export default function Dashboard() {
             href="https://github.com/RickWithThePortalGun/WCI"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-mono text-[8px] text-[#3a6a4a] hover:text-[#44aaff] transition-colors"
+            className="hidden sm:flex items-center gap-1.5 font-mono text-[8px] text-[#3a6a4a] hover:text-[#44aaff] transition-colors"
             title="View on GitHub"
           >
             <Github size={12} />
-            <span className="hidden sm:inline">VIEW REPO</span>
-            <span className="sm:hidden">REPO</span>
+            <span>VIEW REPO</span>
           </a>
           <div className="font-mono text-[8px] text-[#1a3a1a]">
             ALL SOURCES ARE PUBLIC. FOR INFORMATIONAL PURPOSES ONLY. WCI © 2026

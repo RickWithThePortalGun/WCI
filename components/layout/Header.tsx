@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, Globe, Radio, Play, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Globe, Radio, Play, BarChart3, Github } from 'lucide-react';
 import useSWR from 'swr';
 
 export type TabId = 'dashboard' | 'globe' | 'news' | 'videos' | 'analysis';
@@ -79,6 +79,17 @@ export default function Header({ activeTab, onTabChange, articleCount, lastUpdat
         </div>
 
         <div className="flex items-center gap-3 sm:gap-6 font-mono text-[10px] w-full sm:w-auto justify-between sm:justify-end">
+          {/* GitHub icon - Mobile only, top right */}
+          <a
+            href="https://github.com/RickWithThePortalGun/WCI"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="sm:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-[#040c05] border border-[#1a3a1a] hover:border-[#2a5a3a] hover:bg-[#060f07] transition-all"
+            title="View on GitHub"
+          >
+            <Github size={16} className="text-[#3a6a4a] hover:text-[#44aaff]" />
+          </a>
+
           <div className="text-[#2a4a2a] hidden lg:block">{dateStr}</div>
           <div className="text-[#ff8844] text-xs sm:text-sm tracking-widest font-bold">{timeStr} UTC</div>
           <div className="hidden md:flex items-center gap-2 text-[9px] text-[#2a4a2a]">

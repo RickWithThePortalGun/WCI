@@ -84,7 +84,7 @@ export default function GlobeClient({ width, height, onSelectZone, selectedZone 
         width={width}
         height={height}
         backgroundColor="rgba(3,8,5,0)"
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
         bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         atmosphereColor="#1a4a2a"
         atmosphereAltitude={0.12}

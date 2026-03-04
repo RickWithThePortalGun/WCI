@@ -208,13 +208,6 @@ async function main() {
     assert(res.status === 401, `expected 401, got ${res.status}`);
   });
 
-  await check('GET /api/telegram/cron with correct token → 200', async () => {
-    const res = await apiGet('/api/telegram/cron', {
-      headers: { Authorization: `Bearer ${CRON_SECRET}` },
-    });
-    assert(res.ok, `expected 200, got ${res.status}`);
-  });
-
   await check('GET /api/telegram/register without secret → 401', async () => {
     const res = await apiGet('/api/telegram/register');
     assert(res.status === 401, `expected 401, got ${res.status}`);

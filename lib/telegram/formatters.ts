@@ -1,4 +1,4 @@
-import type { NewsArticle, ConflictZone, AIDigestResponse } from '@/lib/types';
+import type { NewsArticle, ConflictZone, AIDigestResponse, YTVideo, ConflictTag } from '@/lib/types';
 
 // ── Utilities ──────────────────────────────────────────────────────────
 
@@ -316,17 +316,14 @@ Only articles at or above this score will trigger a push alert. Select a new lev
 
 export function formatSchedule(briefingTime: string | null): string {
   const status = briefingTime
-    ? `✅ Daily briefing set for <b>${briefingTime} UTC</b>`
-    : '○ No daily briefing scheduled';
+    ? `✅ Active — <b>${briefingTime} UTC</b>`
+    : '○ Not scheduled';
 
   return `🗓 <b>BRIEFING SCHEDULE</b>
+<code>${HR}</code>
+<b>Status:</b> ${status}
 
-${status}
-
-Reply with a time in <b>HH:MM</b> format (24h UTC) to set your daily AI digest.
-Examples: <code>07:30</code>  <code>12:00</code>  <code>21:00</code>
-
-Send <code>/schedule off</code> to disable.`;
+Select a time below to receive your daily AI intelligence digest.\nAll times are <b>UTC</b>. Tap <i>Disable</i> to turn off.`;
 }
 
 export function formatHelp(): string {
@@ -342,6 +339,11 @@ export function formatHelp(): string {
 <b>ZONE DEEP-DIVE</b>
 <code>/region          </code>Select a conflict zone (interactive)
 <code>/region [name]   </code>Direct zone lookup — e.g. /region ukraine
+
+<b>MEDIA</b>
+<code>/videos          </code>Live video feeds (BBC, Al Jazeera &amp; more)
+<code>/videos [channel]</code>Filter by channel — e.g. /videos BBC News
+<code>/predict         </code>Prof. Jiang's analysis matched to your watchlist
 
 <b>SEARCH</b>
 <code>/search [query]  </code>Search current headlines
@@ -378,4 +380,59 @@ ${HR}</code>
 <b>ACTIVE WATCHERS</b> ${stats.activeWatchers}
 <b>ALERTS TODAY</b>    ${stats.alertsSentToday}
 <code>${HR}</code>`;
+}
+
+export function formatVideoList(videos: YTVideo[], channel = 'all'): string {
+  const header = channel === 'all' ? 'ALL CHANNELS' : h(channel.replace(' English', '').toUpperCase());
+  const shown = videos.slice(0, 10);
+
+  if (shown.length === 0) {
+    return `📺 <b>VIDEO INTEL — ${header}</b>\n\n<i>No videos available at the moment. Try again shortly.</i>`;
+  }
+
+  let msg = `📺 <b>VIDEO INTEL — ${header}</b>\n<code>${utcTimestamp()}\n${HR}</code>\n`;
+  msg += `<i>${shown.length} video${shown.length !== 1 ? 's' : ''} available</i>\n\n`;
+
+  for (let i = 0; i < shown.length; i++) {
+    const v = shown[i];
+    const num = String(i + 1).padStart(2, '0');
+    const ch = h(v.channelName.replace(' English', ''));
+    const tag = v.tags.length ? ` · <code>${v.tags[0].toUpperCase()}</code>` : '';
+    const age = relTime(v.publishedAt);
+    msg += `${num}. <a href="${v.videoUrl}"><b>${h(v.title)}</b></a>\n`;
+    msg += `    <i>${ch} · ${age}${tag}</i>\n\n`;
+  }
+
+  msg += `<code>${HR}</code>\n▶ Tap a title to watch on YouTube\n🔘 Use buttons below to filter by channel`;
+  return msg;
+}
+
+export function formatPredictiveHistory(videos: YTVideo[], watchlist: ConflictTag[]): string {
+  if (videos.length === 0) {
+    const hint = watchlist.length
+      ? `No Predictive History videos found matching your watchlist (<code>${watchlist.slice(0, 4).join(', ')}</code>).\n\nTry /watch to broaden your regions, or check all videos with /videos.`
+      : `No videos available right now. Check back soon.`;
+    return `🔮 <b>PREDICTIVE HISTORY</b>\n<i>Prof. Xueqin Jiang</i>\n\n${hint}`;
+  }
+
+  const topic = watchlist.length
+    ? watchlist.slice(0, 4).map(t => t.toUpperCase()).join(' · ')
+    : 'ALL TOPICS';
+
+  let msg = `🔮 <b>PREDICTIVE HISTORY</b>\n<i>Prof. Xueqin Jiang · ${h(topic)}</i>\n`;
+  msg += `<code>${utcTimestamp()}\n${HR}</code>\n`;
+  msg += `<i>${videos.length} video${videos.length !== 1 ? 's' : ''} matched</i>\n\n`;
+
+  for (let i = 0; i < videos.length; i++) {
+    const v = videos[i];
+    const num = String(i + 1).padStart(2, '0');
+    const age = relTime(v.publishedAt);
+    const tags = v.tags.length ? ` · <code>${v.tags.slice(0, 3).join(' ')}</code>` : '';
+    msg += `${num}. <a href="${v.videoUrl}"><b>${h(v.title)}</b></a>\n`;
+    msg += `    <i>${age}${tags}</i>\n\n`;
+  }
+
+  msg += `<code>${HR}</code>\n▶ Tap a title to watch on YouTube`;
+  if (watchlist.length) msg += `\n⚙️ Adjust your watchlist with /watch`;
+  return msg;
 }

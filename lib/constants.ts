@@ -61,6 +61,7 @@ export const YT_CHANNELS = [
   { name: 'France 24 English', channelId: 'UCQfwfsi5VrQ8yKZ-UWmAEFg', logo: '🇫🇷' },
   { name: 'WION', channelId: 'UCEhMIer5UtYHEDEa57ETSSA', logo: '🇮🇳' },
   { name: 'TRT World', channelId: 'UC7fWeaHhqgM4Ry-RMpM2YYw', logo: '🇹🇷' },
+  { name: 'Predictive History', channelId: 'UC11aHtNnc5bEPLI4jf6mnYg', logo: '🔮' },
 ];
 
 // ── Live Conflict Zones ──────────────────────────────────────────────

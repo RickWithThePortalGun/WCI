@@ -56,6 +56,8 @@ export async function GET(req: NextRequest) {
         { command: 'schedule', description: 'Set daily briefing time (HH:MM UTC)' },
         { command: 'sources',  description: 'Toggle news sources' },
         { command: 'profile',  description: 'Switch Analyst / Summary mode' },
+        { command: 'videos',   description: 'Live video feeds from BBC, Al Jazeera & more' },
+        { command: 'predict',  description: 'Prof. Jiang\'s analysis matched to your watchlist' },
         { command: 'stats',    description: 'Bot statistics' },
         { command: 'help',     description: 'Full command reference' },
       ],

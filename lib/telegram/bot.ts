@@ -31,10 +31,13 @@ import {
   formatHelp,
   formatProfile,
   formatStats,
+  formatVideoList,
+  formatPredictiveHistory,
 } from './formatters';
 import {
   fetchArticles,
   fetchAIDigest,
+  fetchVideos,
   findZone,
   getConflictZones,
   articleAlertKey,
@@ -90,6 +93,44 @@ function buildWatchKeyboard(watchlist: ConflictTag[]) {
   return Markup.inlineKeyboard(rows);
 }
 
+const VIDEO_CHANNELS = [
+  { name: 'BBC News', logo: '🇬🇧' },
+  { name: 'Al Jazeera English', logo: '🇶🇦' },
+  { name: 'DW News', logo: '🇩🇪' },
+  { name: 'France 24 English', logo: '🇫🇷' },
+  { name: 'WION', logo: '🇮🇳' },
+  { name: 'TRT World', logo: '🇹🇷' },
+];
+
+/** Build the inline keyboard for /videos channel filter */
+function buildVideoKeyboard(activeChannel: string) {
+  const allBtn = Markup.button.callback(
+    `${activeChannel === 'all' ? '📡' : '○'} ALL`,
+    'videos:all',
+  );
+  const chBtns = VIDEO_CHANNELS.map(ch =>
+    Markup.button.callback(
+      `${activeChannel === ch.name ? '▶' : ch.logo} ${ch.name.replace(' English', '')}`,
+      `videos:ch:${ch.name}`,
+    ),
+  );
+  const rows: ReturnType<typeof Markup.button.callback>[][] = [[allBtn]];
+  for (let i = 0; i < chBtns.length; i += 2) rows.push(chBtns.slice(i, i + 2));
+  return Markup.inlineKeyboard(rows);
+}
+
+/** Build the inline keyboard for /schedule time picker */
+function buildScheduleKeyboard(current: string | null) {
+  const TIMES = ['05:00', '06:00', '07:00', '08:00', '09:00', '12:00', '15:00', '18:00', '20:00', '21:00', '22:00', '23:00'];
+  const btns = TIMES.map(t =>
+    Markup.button.callback(`${current === t ? '✅ ' : ''}${t}`, `sched:${t}`),
+  );
+  const rows: ReturnType<typeof Markup.button.callback>[][] = [];
+  for (let i = 0; i < btns.length; i += 4) rows.push(btns.slice(i, i + 4));
+  rows.push([Markup.button.callback('🔕 Disable', 'sched:off')]);
+  return Markup.inlineKeyboard(rows);
+}
+
 /** Build the inline keyboard for /region zone selection */
 function buildRegionKeyboard() {
   const buttons = CONFLICT_ZONES.map(z => {
@@ -110,8 +151,24 @@ export function createBot(token: string): Telegraf {
   // ── /start ─────────────────────────────────────────────────────────
   bot.start(async ctx => {
     const { id, username, first_name } = ctx.from;
+    const isNew = !(await getSubscriber(id));
     await createSubscriber(id, username, first_name);
     await send(ctx, formatWelcome(first_name));
+
+    if (isNew) {
+      try {
+        const videoUrl = `${(process.env.APP_URL ?? 'https://www.wcintel.com.ng').replace(/\/$/, '')}/Sequence%2003_1.mp4`;
+        await ctx.replyWithVideo(
+          { url: videoUrl },
+          {
+            caption: '🎬 <b>WORLD CONFLICT INTEL</b>\n\nYour intelligence platform. Real-time conflict data, AI-scored and delivered.',
+            parse_mode: 'HTML',
+          },
+        );
+      } catch {
+        // Silently skip if video unavailable
+      }
+    }
   });
 
   // ── /help ──────────────────────────────────────────────────────────
@@ -263,9 +320,10 @@ export function createBot(token: string): Telegraf {
     const sub = await resolveSub(id, username, first_name);
     const input = ctx.message.text.split(' ').slice(1).join(' ').trim();
 
+    // Allow inline argument: /schedule 08:30 or /schedule off
     if (input === 'off' || input === 'disable') {
       await updateSubscriber(id, { briefingTime: null });
-      await ctx.reply('✅ Daily briefing disabled.');
+      await ctx.reply('🔕 Daily briefing disabled.');
       return;
     }
     if (/^\d{1,2}:\d{2}$/.test(input)) {
@@ -274,12 +332,14 @@ export function createBot(token: string): Telegraf {
         const formatted = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
         await updateSubscriber(id, { briefingTime: formatted });
         await ctx.replyWithHTML(
-          `✅ Daily intelligence briefing scheduled for <b>${formatted} UTC</b>.\n\nYou'll receive an AI-generated digest every day at that time.`,
+          `✅ Daily intelligence briefing scheduled for <b>${formatted} UTC</b>.`,
         );
         return;
       }
     }
-    await ctx.replyWithHTML(formatSchedule(sub.briefingTime));
+
+    // Show interactive keyboard for picking a time
+    await ctx.replyWithHTML(formatSchedule(sub.briefingTime), buildScheduleKeyboard(sub.briefingTime));
   });
 
   // ── /sources ───────────────────────────────────────────────────────
@@ -316,6 +376,36 @@ export function createBot(token: string): Telegraf {
   // ── /stats ─────────────────────────────────────────────────────────
   bot.command('stats', async ctx => {
     await send(ctx, formatStats(await getStats()));
+  });
+
+  // ── /videos ────────────────────────────────────────────────────────
+  bot.command('videos', async ctx => {
+    const arg = ctx.message.text.split(' ').slice(1).join(' ').trim();
+    await ctx.sendChatAction('typing');
+    try {
+      const videos = await fetchVideos(arg || undefined);
+      await ctx.replyWithHTML(formatVideoList(videos, arg || 'all'), buildVideoKeyboard(arg || 'all'));
+    } catch {
+      await ctx.reply('⚠️ Could not fetch video feeds. Please try again shortly.');
+    }
+  });
+
+  // ── /predict ───────────────────────────────────────────────────────
+  bot.command('predict', async ctx => {
+    const { id, username, first_name } = ctx.from;
+    await ctx.sendChatAction('typing');
+    try {
+      const [sub, videos] = await Promise.all([
+        resolveSub(id, username, first_name),
+        fetchVideos('Predictive History'),
+      ]);
+      const relevant = sub.watchlist.length
+        ? videos.filter(v => v.tags.some(t => sub.watchlist.includes(t as ConflictTag)))
+        : videos;
+      await send(ctx, formatPredictiveHistory(relevant, sub.watchlist));
+    } catch {
+      await ctx.reply('⚠️ Could not fetch Predictive History videos. Please try again shortly.');
+    }
   });
 
   // ── Callback Queries ───────────────────────────────────────────────
@@ -411,6 +501,42 @@ export function createBot(token: string): Telegraf {
       `✅ Report profile updated to <b>${profile.toUpperCase()}</b>.`,
       { parse_mode: 'HTML' },
     );
+  });
+
+  // Schedule time picker
+  bot.action(/^sched:(off|\d{2}:\d{2})$/, async ctx => {
+    const value = ctx.match[1];
+    if (value === 'off') {
+      await updateSubscriber(ctx.from.id, { briefingTime: null });
+      await ctx.answerCbQuery('🔕 Briefing disabled');
+      await ctx.editMessageText('🔕 Daily briefing has been <b>disabled</b>.', { parse_mode: 'HTML' });
+    } else {
+      await updateSubscriber(ctx.from.id, { briefingTime: value });
+      await ctx.answerCbQuery(`✅ Briefing set for ${value} UTC`);
+      await ctx.editMessageText(
+        `✅ Daily intelligence briefing set for <b>${value} UTC</b>.\n\nYou'll receive an AI digest every day at that time.\nUse /schedule to change or /schedule off to cancel.`,
+        { parse_mode: 'HTML' },
+      );
+    }
+  });
+
+  // Videos channel filter
+  bot.action(/^videos:(all|ch:.+)$/, async ctx => {
+    const value = ctx.match[1];
+    const channel = value === 'all' ? undefined : value.replace(/^ch:/, '');
+    await ctx.answerCbQuery(channel ? `Loading ${channel.replace(' English', '')}…` : 'Loading all channels…');
+    await ctx.sendChatAction('typing');
+    try {
+      const videos = await fetchVideos(channel);
+      const text = formatVideoList(videos, channel ?? 'all');
+      await ctx.editMessageText(text, {
+        parse_mode: 'HTML',
+        link_preview_options: LINK_PREVIEW_OFF,
+        ...buildVideoKeyboard(channel ?? 'all'),
+      });
+    } catch {
+      await ctx.answerCbQuery('⚠️ Failed to load videos');
+    }
   });
 
   // ── Inline Mode ────────────────────────────────────────────────────

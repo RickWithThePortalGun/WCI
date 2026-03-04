@@ -1,4 +1,4 @@
-import type { NewsArticle, ConflictZone, AIDigestResponse } from '@/lib/types';
+import type { NewsArticle, ConflictZone, AIDigestResponse, YTVideo } from '@/lib/types';
 import { CONFLICT_ZONES } from '@/lib/constants';
 
 function baseUrl(): string {
@@ -49,4 +49,13 @@ export function findZone(query: string): ConflictZone | null {
 /** Returns the article hash used for alert deduplication (matches bot.ts logic). */
 export function articleAlertKey(article: NewsArticle): string {
   return article.title.slice(0, 60).toLowerCase().replace(/\W+/g, '');
+}
+
+export async function fetchVideos(channel?: string): Promise<YTVideo[]> {
+  const url = new URL('/api/youtube', baseUrl());
+  const res = await fetch(url.toString(), { cache: 'no-store' });
+  if (!res.ok) throw new Error(`YouTube API responded ${res.status}`);
+  const data = await res.json();
+  const videos = (data.videos ?? []) as YTVideo[];
+  return channel ? videos.filter(v => v.channelName === channel) : videos;
 }

@@ -4,7 +4,13 @@ import type { YTVideo } from '@/lib/types';
 import { YT_CHANNELS } from '@/lib/constants';
 import { generateId, classifyTags, stripHtml, truncate } from '@/lib/utils';
 
-const parser = new Parser({ timeout: 8000 });
+const parser = new Parser({
+  timeout: 8000,
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (compatible; WCI/1.0; +https://www.wcintel.com.ng)',
+    'Accept': 'application/rss+xml, application/atom+xml, text/xml, */*',
+  },
+});
 
 async function fetchChannel(channel: typeof YT_CHANNELS[number]): Promise<YTVideo[]> {
   const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`;
@@ -31,6 +37,12 @@ async function fetchChannel(channel: typeof YT_CHANNELS[number]): Promise<YTVide
 
 export async function GET() {
   const results = await Promise.allSettled(YT_CHANNELS.map(fetchChannel));
+
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(`[youtube] ${YT_CHANNELS[i].name} failed:`, r.reason?.message ?? r.reason);
+    }
+  });
 
   const videos: YTVideo[] = results
     .filter((r): r is PromiseFulfilledResult<YTVideo[]> => r.status === 'fulfilled')

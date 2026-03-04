@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "bot:dev": "tsx --env-file=.env scripts/bot-dev.ts"
+    "bot:dev": "tsx --env-file=.env scripts/bot-dev.ts",
+    "preflight": "tsx --env-file=.env scripts/preflight.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.36.3",

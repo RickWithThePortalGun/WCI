@@ -55,11 +55,11 @@ export const RSS_FEEDS = [
 
 // ── YouTube News Channels (channel RSS — no API key needed) ──────────
 export const YT_CHANNELS = [
-  { name: 'BBC News', channelId: 'UCnUYZLuoy1rq1aVMwx4aTzw', logo: '🇬🇧' },
-  { name: 'Al Jazeera English', channelId: 'UCNye-wNBqNL5ZzHSJdnWBdw', logo: '🇶🇦' },
+  { name: 'BBC News', channelId: 'UC16niRr50-MSBwiO3YDb3RA', logo: '🇬🇧' },
+  { name: 'Al Jazeera English', channelId: 'UCNye-wNBqNL5ZzHSJj3l8Bg', logo: '🇶🇦' },
   { name: 'DW News', channelId: 'UCknLrEdhRCp1aegoMqRaCZg', logo: '🇩🇪' },
   { name: 'France 24 English', channelId: 'UCQfwfsi5VrQ8yKZ-UWmAEFg', logo: '🇫🇷' },
-  { name: 'WION', channelId: 'UCEhMIer5UtYHEDEa57ETSSA', logo: '🇮🇳' },
+  { name: 'WION', channelId: 'UC_gUM8rL-Lrg6O3adPW9K1g', logo: '🇮🇳' },
   { name: 'TRT World', channelId: 'UC7fWeaHhqgM4Ry-RMpM2YYw', logo: '🇹🇷' },
   { name: 'Predictive History', channelId: 'UC11aHtNnc5bEPLI4jf6mnYg', logo: '🔮' },
 ];

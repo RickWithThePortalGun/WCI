@@ -46,21 +46,29 @@ export default function VideoPanel({ videos, loading }: Props) {
         <span className="ml-auto flex-shrink-0 font-mono text-[10px] text-[#3a6a4a]">{filtered.length} VIDEOS</span>
       </div>
 
-      {/* Embed player */}
+      {/* Video modal overlay */}
       <AnimatePresence>
         {activeVideo && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-4 flex-shrink-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setActiveVideo(null)}
           >
-            <div className="relative bg-black rounded overflow-hidden border border-[#1a3a1a]">
-              <div className="flex items-center justify-between px-3 py-2 bg-[#060f07] border-b border-[#1a3a1a]">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-3xl bg-[#060f07] border border-[#1a3a1a] rounded overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-3 py-2 border-b border-[#1a3a1a]">
                 <div className="font-mono text-[10px] text-[#ff6633] truncate flex-1 mr-4">▶ {activeVideo.title}</div>
                 <button
                   onClick={() => setActiveVideo(null)}
-                  className="text-[#3a6a4a] hover:text-[#8aaa8a] font-mono text-sm"
+                  className="text-[#3a6a4a] hover:text-[#8aaa8a] font-mono text-sm flex-shrink-0"
                 >
                   ✕ CLOSE
                 </button>
@@ -74,7 +82,7 @@ export default function VideoPanel({ videos, loading }: Props) {
                   title={activeVideo.title}
                 />
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

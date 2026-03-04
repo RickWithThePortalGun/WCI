@@ -9,6 +9,7 @@ const K = {
   subs: 'wci:subs',
   alert: (hash: string) => `wci:alert:${hash}`,
   alertCount: () => `wci:alerts:${new Date().toISOString().slice(0, 10)}`, // YYYY-MM-DD
+  briefing: (chatId: number, date: string, time: string) => `wci:brief:${chatId}:${date}:${time}`,
 };
 
 // ── Subscriber CRUD ────────────────────────────────────────────────────
@@ -94,6 +95,18 @@ export async function markAlertSent(hash: string): Promise<void> {
       if (count === 1) redis.expire(K.alertCount(), 60 * 60 * 48);
     }),
   ]);
+}
+
+// ── Briefing Deduplication ─────────────────────────────────────────────
+
+/** Prevent double-sending when multiple cron ticks land in the match window. */
+export async function hasBriefingBeenSent(chatId: number, date: string, time: string): Promise<boolean> {
+  return (await redis.exists(K.briefing(chatId, date, time))) === 1;
+}
+
+export async function markBriefingSent(chatId: number, date: string, time: string): Promise<void> {
+  // 25h TTL — clears before the same time slot tomorrow
+  await redis.set(K.briefing(chatId, date, time), 1, { ex: 60 * 60 * 25 });
 }
 
 // ── Stats ──────────────────────────────────────────────────────────────

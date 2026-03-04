@@ -12,6 +12,8 @@ import {
   getAllSubscribers,
   hasAlertBeenSent,
   markAlertSent,
+  hasBriefingBeenSent,
+  markBriefingSent,
   getStats,
 } from './store';
 import {
@@ -48,7 +50,7 @@ import {
 const WATCHABLE_TAGS: ConflictTag[] = [
   'ukraine', 'russia', 'gaza', 'israel', 'taiwan', 'china',
   'iran', 'sudan', 'myanmar', 'yemen', 'sahel', 'drc',
-  'korea', 'lebanon', 'kashmir', 'ethiopia', 'nuclear', 'cyber', 'nato',
+  'korea', 'lebanon', 'kashmir', 'afghanistan', 'ethiopia', 'nuclear', 'cyber', 'nato',
 ];
 
 const ALL_SOURCES = [
@@ -623,10 +625,21 @@ export async function broadcastAlerts(bot: Telegraf): Promise<void> {
 
 export async function sendScheduledBriefings(bot: Telegraf): Promise<void> {
   const now = new Date();
-  const currentTime = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
+  const utcDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // Build a set of HH:MM strings covering the last 3 minutes.
+  // Cron fires every 2 min and may be up to ~1 min late, so a 3-min
+  // lookback ensures every scheduled time is caught exactly once.
+  const windowMinutes = new Set<string>();
+  for (let offset = 0; offset <= 3; offset++) {
+    const t = new Date(now.getTime() - offset * 60_000);
+    windowMinutes.add(
+      `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`,
+    );
+  }
 
   const all = await getAllSubscribers();
-  const targets = all.filter(s => s.briefingTime === currentTime);
+  const targets = all.filter(s => s.briefingTime && windowMinutes.has(s.briefingTime));
   if (targets.length === 0) return;
 
   let text: string;
@@ -643,6 +656,10 @@ export async function sendScheduledBriefings(bot: Telegraf): Promise<void> {
   }
 
   for (const sub of targets) {
+    // Skip if already sent today for this scheduled time (dedup across cron ticks)
+    if (await hasBriefingBeenSent(sub.chatId, utcDate, sub.briefingTime!)) continue;
+    await markBriefingSent(sub.chatId, utcDate, sub.briefingTime!);
+
     try {
       await bot.telegram.sendMessage(sub.chatId, text, HTML_OPTS);
     } catch (err: any) {

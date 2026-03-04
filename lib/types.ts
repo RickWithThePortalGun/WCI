@@ -82,6 +82,7 @@ export type ConflictTag =
   | 'drc'
   | 'korea'
   | 'kashmir'
+  | 'afghanistan'
   | 'ethiopia'
   | 'libya'
   | 'lebanon'

@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "bot:dev": "tsx --env-file=.env scripts/bot-dev.ts"
   },
   "dependencies": {
+    "@upstash/redis": "^1.36.3",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "date-fns": "^3.6.0",
@@ -22,6 +24,7 @@
     "recharts": "^2.12.7",
     "rss-parser": "^3.13.0",
     "swr": "^2.2.5",
+    "telegraf": "^4.16.3",
     "three": "^0.183.2"
   },
   "devDependencies": {
@@ -34,6 +37,8 @@
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

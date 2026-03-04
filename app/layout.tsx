@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   title: 'World Conflict Intel | Real-Time Geopolitical Dashboard',
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="scanlines min-h-screen">
         {children}
       </body>
+      <Analytics/>
     </html>
   );
 }

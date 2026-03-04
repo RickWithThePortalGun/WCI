@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@upstash/redis": "^1.36.3",
+    "@vercel/analytics": "^1.6.1",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "date-fns": "^3.6.0",

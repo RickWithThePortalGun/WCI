@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import dynamic from 'next/dynamic';
 import type { NewsArticle, YTVideo, ConflictZone } from '@/lib/types';
@@ -15,6 +15,7 @@ import VideoPanel from './media/VideoPanel';
 import AIDigest from './widgets/AIDigest';
 import ConflictTimeline from './widgets/ConflictTimeline';
 import SourceTriangulation from './widgets/SourceTriangulation';
+import FlashpointPredictor from './widgets/FlashpointPredictor';
 import BackgroundMusic from './widgets/BackgroundMusic';
 import { Loader2, Github } from 'lucide-react';
 
@@ -47,7 +48,25 @@ export default function Dashboard() {
     fetchedAt: string;
   }>('/api/youtube', fetcher, { refreshInterval: 300_000 }); // refresh every 5min
 
-  const articles = newsData?.articles ?? [];
+  const { data: gdeltData } = useSWR<{
+    articles: NewsArticle[];
+    fetchedAt: string;
+  }>('/api/gdelt', fetcher, { refreshInterval: 120_000 });
+
+  // Merge RSS + GDELT articles, deduplicate by title prefix
+  const articles = useMemo(() => {
+    const base = newsData?.articles ?? [];
+    const gdelt = gdeltData?.articles ?? [];
+    const seen = new Set(base.map(a => a.title.slice(0, 40).toLowerCase().replace(/\W/g, '')));
+    const fresh = gdelt.filter(a => {
+      const key = a.title.slice(0, 40).toLowerCase().replace(/\W/g, '');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return [...base, ...fresh].sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+  }, [newsData?.articles, gdeltData?.articles]);
+
   const videos = ytData?.videos ?? [];
 
   return (
@@ -173,7 +192,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-12 divide-x-0 lg:divide-x divide-[#1a3a1a] lg:h-full lg:overflow-hidden">
 
           {/* Timeline */}
-          <div className="lg:col-span-5 flex flex-col overflow-hidden border-r-0 lg:border-r border-[#1a3a1a]">
+          <div className="lg:col-span-4 flex flex-col overflow-hidden border-r-0 lg:border-r border-[#1a3a1a]">
             <div className="panel-header flex-shrink-0">
               <span>CONFLICT TIMELINE</span>
               <span className="text-[8px] text-[#2a4a2a] hidden sm:inline">CHRONOLOGICAL VIEW</span>
@@ -184,7 +203,7 @@ export default function Dashboard() {
           </div>
 
           {/* Source triangulation */}
-          <div className="lg:col-span-4 flex flex-col overflow-hidden border-r-0 lg:border-r border-[#1a3a1a]">
+          <div className="lg:col-span-3 flex flex-col overflow-hidden border-r-0 lg:border-r border-[#1a3a1a]">
             <div className="panel-header flex-shrink-0">
               <span>SOURCE TRIANGULATION</span>
               <span className="text-[8px] text-[#2a4a2a] hidden sm:inline">MULTI-OUTLET ANALYSIS</span>
@@ -192,6 +211,11 @@ export default function Dashboard() {
             <div className="flex-1 overflow-hidden p-3">
               <SourceTriangulation articles={articles} />
             </div>
+          </div>
+
+          {/* Flashpoint Predictor */}
+          <div className="lg:col-span-2 overflow-hidden border-r-0 lg:border-r border-[#1a3a1a]">
+            <FlashpointPredictor articles={articles} />
           </div>
 
           {/* AI Digest */}
@@ -208,7 +232,7 @@ export default function Dashboard() {
       {/* Footer */}
       <div className="flex-shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-2 border-t border-[#1a3a1a] bg-[#040c05] gap-2 sm:gap-0">
         <div className="font-mono text-[8px] text-[#1a3a1a] tracking-widest">
-          DATA: BBC · AL JAZEERA · REUTERS · THE GUARDIAN · DW · FRANCE 24 · RFI | OPEN SOURCE INTELLIGENCE
+          DATA: BBC · AL JAZEERA · REUTERS · GUARDIAN · DW · RFI · ISW · BELLINGCAT · UN NEWS · GDELT | OPEN SOURCE INTELLIGENCE
         </div>
         <div className="flex items-center gap-3">
           {process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME && (

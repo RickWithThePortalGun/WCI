@@ -143,15 +143,51 @@ interface Props {
 
 export default function GlobeClient({
   width, height, onSelectZone, selectedZone,
-  aircraft, nuclearFacilities, navalVessels,
-  showAircraft, showNuclear, showNaval,
-  onToggleAircraft, onToggleNuclear, onToggleNaval,
+  aircraft, nuclearFacilities, navalVessels, seismicEvents,
+  showAircraft, showNuclear, showNaval, showSeismic,
+  onToggleAircraft, onToggleNuclear, onToggleNaval, onToggleSeismic,
 }: Props) {
   const globeRef       = useRef<any>(null);
   const tooltipRef     = useRef<HTMLDivElement | null>(null);
   const wrapperRef     = useRef<HTMLDivElement | null>(null);
   const hoveredElemRef = useRef<HTMLElement | null>(null);
   const [selectedLayer, setSelectedLayer] = useState<Exclude<GlobeHtmlLayer, TrailPoint> | null>(null);
+  const [wikiData, setWikiData] = useState<{ extract: string; thumbnail?: string } | null>(null);
+  const [wikiLoading, setWikiLoading] = useState(false);
+
+  // Inject seismic pulse keyframe once into document head
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `@keyframes seismic-pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(3.5);opacity:0}}`;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
+  // Fetch Wikipedia summary when a conflict zone is selected.
+  // Falls back to the search API if the exact name doesn't match an article.
+  useEffect(() => {
+    if (!selectedZone) { setWikiData(null); return; }
+    setWikiLoading(true);
+    setWikiData(null);
+
+    const fetchSummary = (title: string) =>
+      fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
+        .then(r => r.ok ? r.json() : null);
+
+    const searchAndFetch = () =>
+      fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(selectedZone.name)}&format=json&origin=*&srlimit=1`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const hit = d?.query?.search?.[0]?.title;
+          return hit ? fetchSummary(hit) : null;
+        });
+
+    fetchSummary(selectedZone.name)
+      .then(d => (d?.extract ? d : searchAndFetch()))
+      .then(d => { if (d?.extract) setWikiData({ extract: d.extract, thumbnail: d.thumbnail?.source }); })
+      .catch(() => {})
+      .finally(() => setWikiLoading(false));
+  }, [selectedZone]);
 
   // Single shared tooltip div at document.body — fully outside any stacking context.
   useEffect(() => {
@@ -172,6 +208,7 @@ export default function GlobeClient({
       ...(showAircraft ? aircraft : []),
       ...(showNuclear  ? nuclearFacilities : []),
       ...(showNaval    ? navalVessels : []),
+      ...(showSeismic  ? seismicEvents : []),
     ];
     // Add fading trail dots behind each aircraft based on heading
     if (showAircraft) {
@@ -184,7 +221,7 @@ export default function GlobeClient({
             lat: pos.lat, lng: pos.lng,
             altGlobe: acAlt,
             opacity: 1 - i * 0.2,
-            size: 9 - i,     // 8, 7, 6, 5 px
+            size: 9 - i,
             color: '#44aaff',
           };
           layers.push(trail);
@@ -192,7 +229,7 @@ export default function GlobeClient({
       }
     }
     return layers;
-  }, [showAircraft, showNuclear, showNaval, aircraft, nuclearFacilities, navalVessels]);
+  }, [showAircraft, showNuclear, showNaval, showSeismic, aircraft, nuclearFacilities, navalVessels, seismicEvents]);
 
   // Keep a ref so the document mousemove handler always sees the current layer list
   // without needing to re-register on every render.
@@ -372,6 +409,22 @@ export default function GlobeClient({
       return el;
     }
 
+    // Seismic event — pulsing circle, size proportional to magnitude
+    if (item.layerType === 'seismic') {
+      const color = seismicColor(item.magnitude);
+      const size  = Math.round(6 + (item.magnitude - 3.5) * 3.5); // 6–22px
+      el.style.cssText = 'cursor:pointer;user-select:none;position:relative;';
+      el.dataset.layerId = itemId(item);
+      const alert = item.nearNuclearSite ? `border:2px solid #ff2200;` : '';
+      el.innerHTML =
+        `<div style="position:relative;width:${size}px;height:${size}px;">` +
+        `<div style="width:100%;height:100%;border-radius:50%;background:${color};opacity:0.85;${alert}"></div>` +
+        `<div style="position:absolute;inset:0;border-radius:50%;background:${color};` +
+        `animation:seismic-pulse 1.8s ease-out infinite;transform-origin:center;"></div>` +
+        `</div>`;
+      return el;
+    }
+
     el.style.cssText = 'cursor:pointer;user-select:none;position:relative;padding:6px;';
     el.dataset.layerId = itemId(item);
 
@@ -396,6 +449,7 @@ export default function GlobeClient({
     { icon: '✈', label: 'AIRCRAFT', active: showAircraft, onToggle: onToggleAircraft, color: '#44aaff' },
     { icon: '☢', label: 'NUCLEAR',  active: showNuclear,  onToggle: onToggleNuclear,  color: '#ff4400' },
     { icon: '⚓', label: 'NAVAL',    active: showNaval,    onToggle: onToggleNaval,    color: '#44aaff' },
+    { icon: '〜', label: 'SEISMIC',  active: showSeismic,  onToggle: onToggleSeismic,  color: '#ffcc00' },
   ];
 
   return (
@@ -500,7 +554,7 @@ export default function GlobeClient({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="absolute top-4 right-4 bg-[#060f07ee] border border-[#1a3a1a] rounded p-4 w-72 backdrop-blur-sm z-[500]"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-[#060f07ee] border border-[#1a3a1a] rounded p-3 sm:p-4 w-[min(18rem,calc(100vw-1rem))] max-h-[70vh] flex flex-col backdrop-blur-sm z-[500]"
           >
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -509,7 +563,7 @@ export default function GlobeClient({
               </div>
               <button onClick={() => onSelectZone?.(null)} className="text-[#3a6a4a] hover:text-[#8aaa8a] text-lg leading-none">×</button>
             </div>
-            <div className="space-y-2 text-[11px] font-mono">
+            <div className="space-y-2 text-[11px] font-mono overflow-y-auto flex-1 pr-0.5">
               <div className="flex justify-between">
                 <span className="text-[#3a6a4a]">Severity</span>
                 <span style={{ color: SEVERITY_COLORS(selectedZone.severity) }} className="font-bold">{selectedZone.severity}/10</span>
@@ -546,6 +600,33 @@ export default function GlobeClient({
                   ))}
                 </div>
               </div>
+
+              {/* Wikipedia background intel */}
+              {wikiLoading && (
+                <div className="border-t border-[#1a3a1a] pt-2 animate-pulse">
+                  <div className="text-[#3a6a4a] mb-1 text-[9px] tracking-widest">BACKGROUND INTEL</div>
+                  <div className="h-2 bg-[#1a3a1a] rounded w-3/4 mb-1" />
+                  <div className="h-2 bg-[#1a3a1a] rounded w-full mb-1" />
+                  <div className="h-2 bg-[#1a3a1a] rounded w-2/3" />
+                </div>
+              )}
+              {wikiData && (
+                <div className="border-t border-[#1a3a1a] pt-2">
+                  <div className="text-[#3a6a4a] mb-1.5 text-[9px] tracking-widest">BACKGROUND INTEL</div>
+                  <div className="flex gap-2">
+                    {wikiData.thumbnail && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={wikiData.thumbnail} alt="" className="w-12 h-12 object-cover rounded flex-shrink-0 opacity-80" />
+                    )}
+                    <p className="text-[#4a7a5a] text-[9px] leading-relaxed line-clamp-4">{wikiData.extract}</p>
+                  </div>
+                  <a
+                    href={`https://en.wikipedia.org/wiki/${encodeURIComponent(selectedZone.name)}`}
+                    target="_blank" rel="noreferrer"
+                    className="text-[8px] text-[#3a6a4a] hover:text-[#44aa66] mt-1 inline-block"
+                  >↗ WIKIPEDIA</a>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -559,7 +640,7 @@ export default function GlobeClient({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="absolute top-4 right-4 bg-[#060f07ee] border border-[#1a3a1a] rounded p-4 w-72 backdrop-blur-sm z-[500]"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-[#060f07ee] border border-[#1a3a1a] rounded p-3 sm:p-4 w-[min(18rem,calc(100vw-1rem))] max-h-[70vh] flex flex-col backdrop-blur-sm z-[500]"
           >
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
@@ -567,15 +648,21 @@ export default function GlobeClient({
                 <div className="text-[10px] font-mono text-[#3a6a4a] tracking-widest mb-1">
                   {selectedLayer.layerType === 'aircraft' ? 'MILITARY AIRCRAFT'
                    : selectedLayer.layerType === 'nuclear'  ? 'NUCLEAR FACILITY'
+                   : selectedLayer.layerType === 'seismic'  ? 'SEISMIC EVENT'
                    : 'NAVAL VESSEL'}
                 </div>
                 <div
                   className="font-bold font-mono text-sm leading-tight"
                   style={{ color: selectedLayer.layerType === 'nuclear'
-                    ? NUCLEAR_COLOR[selectedLayer.status] : '#44aaff' }}
+                    ? NUCLEAR_COLOR[selectedLayer.status]
+                    : selectedLayer.layerType === 'seismic'
+                    ? seismicColor(selectedLayer.magnitude)
+                    : '#44aaff' }}
                 >
                   {selectedLayer.layerType === 'aircraft'
                     ? (selectedLayer.callsign || selectedLayer.icao24)
+                    : selectedLayer.layerType === 'seismic'
+                    ? `M${selectedLayer.magnitude} — ${selectedLayer.place}`
                     : selectedLayer.name}
                 </div>
               </div>
@@ -586,7 +673,7 @@ export default function GlobeClient({
             </div>
 
             {/* Body */}
-            <div className="space-y-2 text-[11px] font-mono">
+            <div className="space-y-2 text-[11px] font-mono overflow-y-auto flex-1 pr-0.5">
               {selectedLayer.layerType === 'aircraft' && (() => {
                 const altFt = Math.round(selectedLayer.altitude * 3.28084).toLocaleString();
                 const spdKt = Math.round(selectedLayer.velocity * 1.94384);
@@ -624,6 +711,23 @@ export default function GlobeClient({
                   <div className="text-[#5a8a6a] leading-relaxed">{selectedLayer.status}</div>
                 </div>
               </>)}
+              {selectedLayer.layerType === 'seismic' && (() => {
+                const c = seismicColor(selectedLayer.magnitude);
+                const ago = Math.round((Date.now() - selectedLayer.time) / 3_600_000);
+                const agoStr = ago < 1 ? 'Just now' : ago < 24 ? `${ago}h ago` : `${Math.round(ago / 24)}d ago`;
+                return (<>
+                  <div className="flex justify-between"><span className="text-[#3a6a4a]">Magnitude</span><span style={{ color: c }} className="font-bold">M{selectedLayer.magnitude}</span></div>
+                  <div className="flex justify-between"><span className="text-[#3a6a4a]">Depth</span><span className="text-[#8aaa8a]">{selectedLayer.depth} km</span></div>
+                  <div className="flex justify-between"><span className="text-[#3a6a4a]">Time</span><span className="text-[#8aaa8a]">{agoStr}</span></div>
+                  <div className="flex justify-between"><span className="text-[#3a6a4a]">Location</span><span className="text-[#8aaa8a] text-right max-w-[160px]">{selectedLayer.place}</span></div>
+                  {selectedLayer.nearNuclearSite && (
+                    <div className="border border-[#ff220055] bg-[#ff220011] rounded p-2 mt-1">
+                      <div className="text-[#ff2200] text-[9px] font-bold">⚠ NEAR NUCLEAR TEST SITE</div>
+                      <div className="text-[#ff8844] text-[9px] mt-0.5">{selectedLayer.nearNuclearSite}</div>
+                    </div>
+                  )}
+                </>);
+              })()}
             </div>
           </motion.div>
         )}

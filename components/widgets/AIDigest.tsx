@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { NewsArticle } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, AlertTriangle, RefreshCw, ChevronRight } from 'lucide-react';
+import { Sparkles, AlertTriangle, RefreshCw, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 
 interface Props {
   articles: NewsArticle[];
@@ -23,6 +23,27 @@ export default function AIDigest({ articles }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [speaking, setSpeaking] = useState(false);
+
+  const playBriefing = useCallback(() => {
+    if (!digest || typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const script = `${digest.summary}. Key events: ${digest.keyEvents.join('. ')}. Risk assessment: ${digest.riskAssessment}`;
+    const utt = new SpeechSynthesisUtterance(script);
+    utt.rate = 0.92;
+    utt.pitch = 0.85;
+    const voices = window.speechSynthesis.getVoices();
+    utt.voice = voices.find(v => v.lang.startsWith('en')) ?? null;
+    utt.onend = () => setSpeaking(false);
+    utt.onerror = () => setSpeaking(false);
+    setSpeaking(true);
+    window.speechSynthesis.speak(utt);
+  }, [digest]);
+
+  const stopBriefing = useCallback(() => {
+    window.speechSynthesis?.cancel();
+    setSpeaking(false);
+  }, []);
   const lastRequestTime = useRef<number>(0);
   const isRequestInProgress = useRef<boolean>(false);
   const cooldownInterval = useRef<NodeJS.Timeout | null>(null);
@@ -237,18 +258,31 @@ export default function AIDigest({ articles }: Props) {
                 </div>
               )}
 
-              <button
-                onClick={generate}
-                disabled={loading || cooldownRemaining > 0}
-                className={`text-[9px] font-mono transition-colors mt-2 ${
-                  loading || cooldownRemaining > 0
-                    ? 'text-[#2a4a2a] cursor-not-allowed opacity-50'
-                    : 'text-[#3a6a4a] hover:text-[#5a8a6a] cursor-pointer'
-                }`}
-              >
-                <RefreshCw size={10} className="inline mr-1" />
-                {cooldownRemaining > 0 ? `REFRESH IN ${cooldownRemaining}S` : 'REFRESH BRIEFING'}
-              </button>
+              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                <button
+                  onClick={generate}
+                  disabled={loading || cooldownRemaining > 0}
+                  className={`text-[9px] font-mono transition-colors ${
+                    loading || cooldownRemaining > 0
+                      ? 'text-[#2a4a2a] cursor-not-allowed opacity-50'
+                      : 'text-[#3a6a4a] hover:text-[#5a8a6a] cursor-pointer'
+                  }`}
+                >
+                  <RefreshCw size={10} className="inline mr-1" />
+                  {cooldownRemaining > 0 ? `REFRESH IN ${cooldownRemaining}S` : 'REFRESH BRIEFING'}
+                </button>
+                {typeof window !== 'undefined' && 'speechSynthesis' in window && (
+                  <button
+                    onClick={speaking ? stopBriefing : playBriefing}
+                    className={`text-[9px] font-mono transition-colors flex items-center gap-1 ${
+                      speaking ? 'text-[#ff4400] animate-pulse' : 'text-[#44aa66] hover:text-[#66cc88]'
+                    }`}
+                  >
+                    {speaking ? <VolumeX size={10} /> : <Volume2 size={10} />}
+                    {speaking ? 'STOP' : 'READ BRIEFING'}
+                  </button>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

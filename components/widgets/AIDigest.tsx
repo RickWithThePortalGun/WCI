@@ -28,16 +28,71 @@ export default function AIDigest({ articles }: Props) {
   const playBriefing = useCallback(() => {
     if (!digest || typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const script = `${digest.summary}. Key events: ${digest.keyEvents.join('. ')}. Risk assessment: ${digest.riskAssessment}`;
-    const utt = new SpeechSynthesisUtterance(script);
-    utt.rate = 0.92;
-    utt.pitch = 0.85;
+
+    // Clean text for natural speech
+    const clean = (s: string) =>
+      s.replace(/\bUSA\b/g, 'the United States')
+       .replace(/\bUK\b/g, 'the United Kingdom')
+       .replace(/\bUAE\b/g, 'the U.A.E.')
+       .replace(/\bUN\b/g, 'the U.N.')
+       .replace(/\bISW\b/g, 'the Institute for the Study of War')
+       .replace(/([.!?])\s+/g, '$1  ') // extra pause between sentences
+       .trim();
+
+    const script = [
+      'World Conflict Intel briefing.',
+      clean(digest.summary),
+      'Key events.',
+      ...digest.keyEvents.map((e, i) => `${i + 1}. ${clean(e)}`),
+      'Risk assessment.',
+      clean(digest.riskAssessment),
+    ].join('  ');
+
+    const speak = (voices: SpeechSynthesisVoice[]) => {
+      const enVoices = voices.filter(v => v.lang.startsWith('en'));
+      // Ranked preference — best quality first
+      const preferred = [
+        'Google UK English Female',
+        'Google UK English Male',
+        'Google US English',
+        'Microsoft Aria Online (Natural) - English (United States)',
+        'Microsoft Guy Online (Natural) - English (United States)',
+        'Microsoft Zira - English (United States)',
+        'Microsoft David - English (United States)',
+      ];
+      const voice =
+        preferred.reduce<SpeechSynthesisVoice | null>(
+          (found, name) => found ?? enVoices.find(v => v.name === name) ?? null,
+          null,
+        ) ??
+        enVoices.find(v => /natural|neural/i.test(v.name)) ??
+        enVoices.find(v => /female/i.test(v.name)) ??
+        enVoices.find(v => v.lang === 'en-GB') ??
+        enVoices.find(v => v.lang === 'en-US') ??
+        enVoices[0] ??
+        null;
+
+      const utt = new SpeechSynthesisUtterance(script);
+      utt.voice  = voice;
+      utt.rate   = 0.88;
+      utt.pitch  = 0.95;
+      utt.volume = 1;
+      utt.onend  = () => setSpeaking(false);
+      utt.onerror = () => setSpeaking(false);
+      setSpeaking(true);
+      window.speechSynthesis.speak(utt);
+    };
+
     const voices = window.speechSynthesis.getVoices();
-    utt.voice = voices.find(v => v.lang.startsWith('en')) ?? null;
-    utt.onend = () => setSpeaking(false);
-    utt.onerror = () => setSpeaking(false);
-    setSpeaking(true);
-    window.speechSynthesis.speak(utt);
+    if (voices.length > 0) {
+      speak(voices);
+    } else {
+      // Chrome/Edge load voices asynchronously on first call
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        speak(window.speechSynthesis.getVoices());
+      };
+    }
   }, [digest]);
 
   const stopBriefing = useCallback(() => {

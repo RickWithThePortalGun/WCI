@@ -95,6 +95,45 @@ export type ConflictTag =
   | 'diplomacy'
   | 'humanitarian';
 
+// ── Military / Intelligence Layers ───────────────────────────────────
+
+export interface MilitaryAircraft {
+  layerType: 'aircraft';
+  icao24: string;
+  callsign: string;
+  country: string;
+  lat: number;
+  lng: number;
+  altitude: number;  // metres
+  velocity: number;  // m/s
+  heading: number;   // degrees
+}
+
+export interface NuclearFacility {
+  layerType: 'nuclear';
+  name: string;
+  country: string;
+  lat: number;
+  lng: number;
+  type: 'weapons' | 'power' | 'research' | 'enrichment' | 'storage';
+  status: 'operational' | 'decommissioned' | 'under-construction' | 'alleged';
+  warheads?: number;
+  notes?: string;
+}
+
+export interface NavalVessel {
+  layerType: 'naval';
+  name: string;
+  country: string;
+  lat: number;
+  lng: number;
+  type: 'carrier' | 'destroyer' | 'submarine' | 'cruiser' | 'frigate';
+  class: string;
+  status: string;
+}
+
+export type GlobeHtmlLayer = MilitaryAircraft | NuclearFacility | NavalVessel;
+
 // Regional risk score
 export interface RegionalRisk {
   region: Region;

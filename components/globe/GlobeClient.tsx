@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import Globe from 'react-globe.gl';
-import type { ConflictZone } from '@/lib/types';
+import type { ConflictZone, MilitaryAircraft, NuclearFacility, NavalVessel, GlobeHtmlLayer } from '@/lib/types';
 import { CONFLICT_ZONES, SEVERITY_COLORS } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,15 +25,42 @@ const ARCS = [
   { startLat: -1.5, startLng: 29.5, endLat: 48.8566, endLng: 2.3522, color: hexToRgba('#ff440040') },
 ];
 
+const NUCLEAR_COLOR: Record<NuclearFacility['status'], string> = {
+  'operational':        '#ff4400',
+  'under-construction': '#ffcc00',
+  'decommissioned':     '#3a6a4a',
+  'alleged':            '#ff8800',
+};
+
 interface Props {
   width: number;
   height: number;
   onSelectZone?: (zone: ConflictZone | null) => void;
   selectedZone?: ConflictZone | null;
+  aircraft: MilitaryAircraft[];
+  nuclearFacilities: NuclearFacility[];
+  navalVessels: NavalVessel[];
+  showAircraft: boolean;
+  showNuclear: boolean;
+  showNaval: boolean;
+  onToggleAircraft: () => void;
+  onToggleNuclear: () => void;
+  onToggleNaval: () => void;
 }
 
-export default function GlobeClient({ width, height, onSelectZone, selectedZone }: Props) {
+export default function GlobeClient({
+  width, height, onSelectZone, selectedZone,
+  aircraft, nuclearFacilities, navalVessels,
+  showAircraft, showNuclear, showNaval,
+  onToggleAircraft, onToggleNuclear, onToggleNaval,
+}: Props) {
   const globeRef = useRef<any>(null);
+
+  const combinedLayers = useMemo<GlobeHtmlLayer[]>(() => [
+    ...(showAircraft ? aircraft : []),
+    ...(showNuclear  ? nuclearFacilities : []),
+    ...(showNaval    ? navalVessels : []),
+  ], [showAircraft, showNuclear, showNaval, aircraft, nuclearFacilities, navalVessels]);
 
   useEffect(() => {
     const applyRotation = () => {
@@ -45,7 +72,6 @@ export default function GlobeClient({ width, height, onSelectZone, selectedZone 
       controls.dampingFactor = 0.05;
       return true;
     };
-
     if (!applyRotation()) {
       const t1 = setTimeout(applyRotation, 300);
       const t2 = setTimeout(applyRotation, 900);
@@ -57,7 +83,7 @@ export default function GlobeClient({ width, height, onSelectZone, selectedZone 
     if (selectedZone) {
       globeRef.current?.pointOfView(
         { lat: selectedZone.lat, lng: selectedZone.lng, altitude: 1.8 },
-        1200
+        1200,
       );
     }
   }, [selectedZone]);
@@ -76,6 +102,105 @@ export default function GlobeClient({ width, height, onSelectZone, selectedZone 
       controls.dampingFactor = 0.05;
     }
   }, []);
+
+  const buildHtmlElement = useCallback((d: object): HTMLElement => {
+    const item = d as GlobeHtmlLayer;
+    const el = document.createElement('div');
+    el.style.cssText = 'cursor:pointer;user-select:none;position:relative;';
+
+    let icon = '';
+    let color = '#44aaff';
+    let iconRotation = 0;
+    let tooltipHtml = '';
+
+    const row = (label: string, value: string, valueColor = '#8aaa8a') =>
+      `<div style="display:flex;justify-content:space-between;gap:12px;">
+         <span style="color:#3a6a4a;">${label}</span>
+         <span style="color:${valueColor};text-align:right;">${value}</span>
+       </div>`;
+
+    if (item.layerType === 'aircraft') {
+      icon = '✈';
+      color = '#44aaff';
+      iconRotation = item.heading - 90;
+      const altFt  = Math.round(item.altitude * 3.28084).toLocaleString();
+      const spdKt  = Math.round(item.velocity * 1.94384);
+      tooltipHtml = `
+        <div style="color:#44aaff;font-weight:bold;margin-bottom:5px;">${item.callsign || item.icao24}</div>
+        ${row('Country', item.country)}
+        ${row('Altitude', `${altFt} ft`)}
+        ${row('Speed', `${spdKt} kt`)}
+        ${row('Heading', `${Math.round(item.heading)}°`)}`;
+    } else if (item.layerType === 'nuclear') {
+      icon = '☢';
+      color = NUCLEAR_COLOR[item.status];
+      const warheadLine = item.warheads ? row('Warheads', `~${item.warheads.toLocaleString()}`, '#ff8844') : '';
+      tooltipHtml = `
+        <div style="color:${color};font-weight:bold;margin-bottom:5px;">${item.name}</div>
+        ${row('Country', item.country)}
+        ${row('Type', item.type.replace('-', ' ').toUpperCase())}
+        ${row('Status', item.status.replace('-', ' ').toUpperCase(), color)}
+        ${warheadLine}
+        ${item.notes ? `<div style="color:#4a7a5a;margin-top:5px;font-size:9px;max-width:160px;line-height:1.4;">${item.notes}</div>` : ''}`;
+    } else {
+      icon = '⚓';
+      color = '#44aaff';
+      tooltipHtml = `
+        <div style="color:#44aaff;font-weight:bold;margin-bottom:5px;">${item.name}</div>
+        ${row('Country', item.country)}
+        ${row('Type', item.type.toUpperCase())}
+        ${row('Class', item.class)}
+        <div style="color:#4a7a5a;margin-top:5px;font-size:9px;max-width:160px;line-height:1.4;">${item.status}</div>`;
+    }
+
+    // Tooltip uses position:fixed so it escapes the globe's overflow clipping.
+    // Coordinates are set dynamically from getBoundingClientRect() on hover.
+    const tooltipStyle = [
+      'position:fixed',
+      'background:#060f07ee',
+      'border:1px solid #1a3a1a',
+      'border-radius:4px',
+      'padding:8px 10px',
+      'font-family:monospace',
+      'font-size:10px',
+      'white-space:nowrap',
+      'pointer-events:none',
+      'opacity:0',
+      'transition:opacity 0.15s',
+      'z-index:9999',
+      `box-shadow:0 0 12px ${color}33`,
+    ].join(';');
+
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;transition:transform 0.15s;">
+        <span style="font-size:13px;display:block;transform:rotate(${iconRotation}deg);filter:drop-shadow(0 0 4px ${color});">${icon}</span>
+      </div>
+      <div class="tip" style="${tooltipStyle}">${tooltipHtml}</div>`;
+
+    const inner = el.firstElementChild as HTMLElement;
+    const tip   = el.querySelector<HTMLElement>('.tip')!;
+
+    el.addEventListener('mouseenter', () => {
+      const r = el.getBoundingClientRect();
+      tip.style.left = `${r.left + r.width / 2}px`;
+      tip.style.top  = `${Math.max(8, r.top - 8)}px`;
+      tip.style.transform = 'translate(-50%, -100%)';
+      tip.style.opacity = '1';
+      inner.style.transform = 'scale(1.5)';
+    });
+    el.addEventListener('mouseleave', () => {
+      tip.style.opacity = '0';
+      inner.style.transform = 'scale(1)';
+    });
+
+    return el;
+  }, []);
+
+  const TOGGLES = [
+    { icon: '✈', label: 'AIRCRAFT', active: showAircraft, onToggle: onToggleAircraft, color: '#44aaff' },
+    { icon: '☢', label: 'NUCLEAR',  active: showNuclear,  onToggle: onToggleNuclear,  color: '#ff4400' },
+    { icon: '⚓', label: 'NAVAL',    active: showNaval,    onToggle: onToggleNaval,    color: '#44aaff' },
+  ];
 
   return (
     <>
@@ -123,16 +248,48 @@ export default function GlobeClient({ width, height, onSelectZone, selectedZone 
         arcDashAnimateTime={2500}
         arcStroke={0.5}
         arcAltitude={0.3}
+        htmlElementsData={combinedLayers}
+        htmlLat={(d: object) => (d as GlobeHtmlLayer).lat}
+        htmlLng={(d: object) => (d as GlobeHtmlLayer).lng}
+        htmlAltitude={(d: object) => {
+          const item = d as GlobeHtmlLayer;
+          return item.layerType === 'aircraft'
+            ? Math.max(0.001, (item.altitude / 13000) * 0.08)
+            : 0.002;
+        }}
+        htmlElement={buildHtmlElement}
       />
 
-      {/* Legend */}
+      {/* Layer toggles — top-left */}
+      <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
+        {TOGGLES.map(({ icon, label, active, onToggle, color }) => (
+          <button
+            key={label}
+            onClick={onToggle}
+            style={{
+              borderColor: active ? color : '#1a3a1a',
+              color: active ? color : '#3a6a4a',
+              boxShadow: active ? `0 0 8px ${color}44` : 'none',
+            }}
+            className="flex items-center gap-1.5 px-2 py-1 bg-[#060f07cc] border rounded text-[9px] font-mono tracking-widest backdrop-blur-sm hover:border-[#2a5a3a] transition-all duration-150"
+          >
+            <span style={{ fontSize: 11 }}>{icon}</span>
+            {label}
+            <span className="ml-1" style={{ color: active ? color : '#1a3a1a' }}>
+              {active ? '●' : '○'}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Severity legend — bottom-left */}
       <div className="absolute bottom-4 left-4 bg-[#060f07cc] border border-[#1a3a1a] rounded p-3 text-[9px] font-mono space-y-1.5 backdrop-blur-sm pointer-events-none">
         <div className="text-[#3a6a4a] tracking-widest mb-2">SEVERITY SCALE</div>
         {[
-          { label: 'CRITICAL (9-10)', color: '#ff0000' },
-          { label: 'HIGH (7.5-9)',    color: '#ff4400' },
+          { label: 'CRITICAL (9-10)',   color: '#ff0000' },
+          { label: 'HIGH (7.5-9)',      color: '#ff4400' },
           { label: 'ELEVATED (6-7.5)', color: '#ff8800' },
-          { label: 'MODERATE (<6)',   color: '#ffcc00' },
+          { label: 'MODERATE (<6)',     color: '#ffcc00' },
         ].map(i => (
           <div key={i.label} className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ background: i.color, boxShadow: `0 0 4px ${i.color}` }} />
@@ -145,7 +302,7 @@ export default function GlobeClient({ width, height, onSelectZone, selectedZone 
         </div>
       </div>
 
-      {/* Selected zone panel */}
+      {/* Selected zone panel — top-right */}
       <AnimatePresence>
         {selectedZone && (
           <motion.div

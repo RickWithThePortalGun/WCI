@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
 import Globe from 'react-globe.gl';
-import type { ConflictZone, MilitaryAircraft, NuclearFacility, NavalVessel, GlobeHtmlLayer, TrailPoint } from '@/lib/types';
+import type { ConflictZone, MilitaryAircraft, NuclearFacility, NavalVessel, GlobeHtmlLayer, TrailPoint, SeismicEvent } from '@/lib/types';
 import { CONFLICT_ZONES, SEVERITY_COLORS } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,13 +21,21 @@ function itemToWorld(lat: number, lng: number, alt: number): Vector3 {
 function itemAlt(item: GlobeHtmlLayer): number {
   if (item.layerType === 'trail')    return item.altGlobe;
   if (item.layerType === 'aircraft') return Math.max(0.001, (item.altitude / 13000) * 0.08);
+  if (item.layerType === 'seismic')  return 0.001;
   return 0.002;
 }
 
 function itemId(item: GlobeHtmlLayer): string {
   if (item.layerType === 'trail')    return '';
   if (item.layerType === 'aircraft') return `ac_${item.icao24}`;
+  if (item.layerType === 'seismic')  return `seismic_${item.time}`;
   return `${item.layerType}_${item.lat}_${item.lng}`;
+}
+
+function seismicColor(magnitude: number): string {
+  if (magnitude >= 6.5) return '#ff2200';
+  if (magnitude >= 5.0) return '#ff8800';
+  return '#ffcc00';
 }
 
 // Geodesic offset — moves a point backwards along an aircraft's heading
@@ -74,6 +82,17 @@ function buildTooltip(item: GlobeHtmlLayer, nucColors: Record<string, string>): 
       row('Country', item.country) + row('Type', item.type.toUpperCase()) + row('Class', item.class) +
       `<div style="color:#4a7a5a;margin-top:5px;font-size:9px;max-width:180px;line-height:1.4;">${item.status}</div>` };
   }
+  if (item.layerType === 'seismic') {
+    const color = seismicColor(item.magnitude);
+    const ago = Math.round((Date.now() - item.time) / 3_600_000);
+    const agoStr = ago < 1 ? 'Just now' : ago < 24 ? `${ago}h ago` : `${Math.round(ago / 24)}d ago`;
+    return { color, html:
+      `<div style="color:${color};font-weight:bold;margin-bottom:5px;">M${item.magnitude} EARTHQUAKE</div>` +
+      row('Location', item.place) + row('Depth', `${item.depth} km`) + row('Time', agoStr) +
+      (item.nearNuclearSite
+        ? `<div style="color:#ff2200;margin-top:6px;font-size:9px;border:1px solid #ff220055;padding:4px 6px;border-radius:3px;">⚠ NEAR ${item.nearNuclearSite}</div>`
+        : '') };
+  }
   return { color: '#44aaff', html: '' }; // trail — never called
 }
 
@@ -111,12 +130,15 @@ interface Props {
   aircraft: MilitaryAircraft[];
   nuclearFacilities: NuclearFacility[];
   navalVessels: NavalVessel[];
+  seismicEvents: SeismicEvent[];
   showAircraft: boolean;
   showNuclear: boolean;
   showNaval: boolean;
+  showSeismic: boolean;
   onToggleAircraft: () => void;
   onToggleNuclear: () => void;
   onToggleNaval: () => void;
+  onToggleSeismic: () => void;
 }
 
 export default function GlobeClient({

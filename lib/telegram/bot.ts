@@ -11,7 +11,7 @@ import {
   removeSubscriber,
   getAllSubscribers,
   hasAlertBeenSent,
-  markAlertSent,
+  claimAlert,
   hasBriefingBeenSent,
   markBriefingSent,
   getStats,
@@ -595,6 +595,7 @@ export async function broadcastAlerts(bot: Telegraf): Promise<void> {
 
     for (const article of articles) {
       const key = articleAlertKey(article);
+      // Fast-path: skip articles we've already handled
       if (await hasAlertBeenSent(key)) continue;
 
       const targets = watchers.filter(
@@ -605,7 +606,10 @@ export async function broadcastAlerts(bot: Telegraf): Promise<void> {
       );
 
       if (targets.length === 0) continue;
-      await markAlertSent(key);
+
+      // Atomic claim via SET NX — if two cron ticks race, only one wins.
+      // The loser gets false here and skips, preventing duplicate sends.
+      if (!(await claimAlert(key))) continue;
 
       for (const sub of targets) {
         try {

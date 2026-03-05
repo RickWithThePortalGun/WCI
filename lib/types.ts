@@ -138,7 +138,18 @@ export interface TrailPoint {
   altGlobe: number; // pre-computed globe-radius fraction
   opacity: number; size: number; color: string;
 }
-export type GlobeHtmlLayer = MilitaryAircraft | NuclearFacility | NavalVessel | TrailPoint;
+export interface SeismicEvent {
+  layerType: 'seismic';
+  lat: number;
+  lng: number;
+  magnitude: number;
+  place: string;
+  time: number; // unix ms
+  depth: number; // km
+  nearNuclearSite?: string; // set if within 150 km of a known test site
+}
+
+export type GlobeHtmlLayer = MilitaryAircraft | NuclearFacility | NavalVessel | TrailPoint | SeismicEvent;
 
 // Regional risk score
 export interface RegionalRisk {

@@ -51,6 +51,34 @@ export const RSS_FEEDS = [
     logo: '🇫🇷',
     region: 'Global' as Region,
   },
+  {
+    name: 'ISW',
+    url: 'https://www.understandingwar.org/rss.xml',
+    bias: 'center' as const,
+    logo: '🎯',
+    region: 'Global' as Region,
+  },
+  {
+    name: 'Bellingcat',
+    url: 'https://www.bellingcat.com/feed/',
+    bias: 'center' as const,
+    logo: '🔍',
+    region: 'Global' as Region,
+  },
+  {
+    name: 'UN News',
+    url: 'https://news.un.org/feed/subscribe/en/news/all/rss.xml',
+    bias: 'center' as const,
+    logo: '🇺🇳',
+    region: 'Global' as Region,
+  },
+  {
+    name: 'Crisis Group',
+    url: 'https://www.crisisgroup.org/rss',
+    bias: 'center' as const,
+    logo: '🌍',
+    region: 'Global' as Region,
+  },
 ];
 
 // ── YouTube News Channels (channel RSS — no API key needed) ──────────

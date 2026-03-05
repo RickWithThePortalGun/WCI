@@ -81,10 +81,27 @@ export async function getAllSubscribers(): Promise<Subscriber[]> {
 
 // ── Alert Deduplication ────────────────────────────────────────────────
 
-const ALERT_TTL_SECS = 60 * 60; // 1 hour — prevents re-alerting the same story
+const ALERT_TTL_SECS = 60 * 60 * 48; // 48 hours — RSS articles stay in feeds that long
 
 export async function hasAlertBeenSent(hash: string): Promise<boolean> {
   return (await redis.exists(K.alert(hash))) === 1;
+}
+
+/**
+ * Atomically claims an alert slot using SET NX (set-if-not-exists).
+ * Returns true if THIS caller claimed it (first one wins).
+ * Returns false if another cron tick already claimed it — caller must skip.
+ * This eliminates the TOCTOU race between concurrent cron invocations.
+ */
+export async function claimAlert(hash: string): Promise<boolean> {
+  const result = await redis.set(K.alert(hash), 1, { ex: ALERT_TTL_SECS, nx: true });
+  if (result === 'OK') {
+    // Increment today's counter; expires after 48h so it auto-cleans
+    const count = await redis.incr(K.alertCount());
+    if (count === 1) redis.expire(K.alertCount(), 60 * 60 * 48);
+    return true;
+  }
+  return false;
 }
 
 export async function markAlertSent(hash: string): Promise<void> {

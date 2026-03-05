@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
-import type { ConflictZone, MilitaryAircraft } from '@/lib/types';
+import type { ConflictZone, MilitaryAircraft, SeismicEvent } from '@/lib/types';
 import { NUCLEAR_FACILITIES, NAVAL_VESSELS } from '@/lib/globe-layers';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -32,12 +32,19 @@ export default function ConflictGlobe({ onSelectZone, selectedZone }: Props) {
   const [showAircraft, setShowAircraft] = useState(false);
   const [showNuclear,  setShowNuclear]  = useState(false);
   const [showNaval,    setShowNaval]    = useState(false);
+  const [showSeismic,  setShowSeismic]  = useState(false);
 
   // Only fetch when the aircraft layer is active — conserves OpenSky's 400 req/day limit
   const { data: aircraftData } = useSWR<{ aircraft: MilitaryAircraft[] }>(
     showAircraft ? '/api/aircraft' : null,
     fetcher,
     { refreshInterval: 30_000 },
+  );
+
+  const { data: seismicData } = useSWR<{ events: SeismicEvent[] }>(
+    showSeismic ? '/api/seismic' : null,
+    fetcher,
+    { refreshInterval: 120_000 },
   );
 
   useEffect(() => {
@@ -66,9 +73,12 @@ export default function ConflictGlobe({ onSelectZone, selectedZone }: Props) {
         showAircraft={showAircraft}
         showNuclear={showNuclear}
         showNaval={showNaval}
+        showSeismic={showSeismic}
+        seismicEvents={seismicData?.events ?? []}
         onToggleAircraft={() => setShowAircraft(v => !v)}
         onToggleNuclear={() => setShowNuclear(v => !v)}
         onToggleNaval={() => setShowNaval(v => !v)}
+        onToggleSeismic={() => setShowSeismic(v => !v)}
       />
     </div>
   );

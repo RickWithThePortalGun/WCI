@@ -132,7 +132,13 @@ export interface NavalVessel {
   status: string;
 }
 
-export type GlobeHtmlLayer = MilitaryAircraft | NuclearFacility | NavalVessel;
+export interface TrailPoint {
+  layerType: 'trail';
+  lat: number; lng: number;
+  altGlobe: number; // pre-computed globe-radius fraction
+  opacity: number; size: number; color: string;
+}
+export type GlobeHtmlLayer = MilitaryAircraft | NuclearFacility | NavalVessel | TrailPoint;
 
 // Regional risk score
 export interface RegionalRisk {

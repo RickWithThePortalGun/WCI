@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, Globe, Radio, Play, BarChart3, Github } from 'lucide-react';
+import { LayoutDashboard, Globe, Radio, Play, BarChart3, Shield, Github } from 'lucide-react';
 import useSWR from 'swr';
 
-export type TabId = 'dashboard' | 'globe' | 'news' | 'videos' | 'analysis';
+export type TabId = 'dashboard' | 'globe' | 'news' | 'videos' | 'analysis' | 'military';
 
 interface Props {
   activeTab: TabId;
@@ -19,6 +19,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode; mobileIcon: React
   { id: 'news', label: 'INTELLIGENCE', icon: <Radio size={14} />, mobileIcon: <Radio size={18} /> },
   { id: 'videos', label: 'VIDEO INTEL', icon: <Play size={14} />, mobileIcon: <Play size={18} /> },
   { id: 'analysis', label: 'ANALYSIS', icon: <BarChart3 size={14} />, mobileIcon: <BarChart3 size={18} /> },
+  { id: 'military', label: 'MILITARY', icon: <Shield size={14} />, mobileIcon: <Shield size={18} /> },
 ];
 
 export default function Header({ activeTab, onTabChange, articleCount, lastUpdated }: Props) {

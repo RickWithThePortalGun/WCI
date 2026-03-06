@@ -5,6 +5,7 @@ import { Vector3 } from 'three';
 import Globe from 'react-globe.gl';
 import type { ConflictZone, MilitaryAircraft, NuclearFacility, NavalVessel, GlobeHtmlLayer, TrailPoint, SeismicEvent } from '@/lib/types';
 import { CONFLICT_ZONES, SEVERITY_COLORS } from '@/lib/constants';
+import { getZoneMilitaryData, TIER_COLORS } from '@/lib/military-power';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Matches three-globe's internal GLOBE_RADIUS and polar2Cartesian exactly
@@ -152,7 +153,7 @@ export default function GlobeClient({
   const wrapperRef     = useRef<HTMLDivElement | null>(null);
   const hoveredElemRef = useRef<HTMLElement | null>(null);
   const [selectedLayer, setSelectedLayer] = useState<Exclude<GlobeHtmlLayer, TrailPoint> | null>(null);
-  const [wikiData, setWikiData] = useState<{ extract: string; thumbnail?: string } | null>(null);
+  const [wikiData, setWikiData] = useState<{ extract: string; thumbnail?: string; title?: string } | null>(null);
   const [wikiLoading, setWikiLoading] = useState(false);
 
   // Inject seismic pulse keyframe once into document head
@@ -184,7 +185,7 @@ export default function GlobeClient({
 
     fetchSummary(selectedZone.name)
       .then(d => (d?.extract ? d : searchAndFetch()))
-      .then(d => { if (d?.extract) setWikiData({ extract: d.extract, thumbnail: d.thumbnail?.source }); })
+      .then(d => { if (d?.extract) setWikiData({ extract: d.extract, thumbnail: d.thumbnail?.source, title: d.title }); })
       .catch(() => {})
       .finally(() => setWikiLoading(false));
   }, [selectedZone]);
@@ -601,6 +602,33 @@ export default function GlobeClient({
                 </div>
               </div>
 
+              {/* Military power mini-comparison */}
+              {(() => {
+                const powers = getZoneMilitaryData(selectedZone.factions ?? [], selectedZone.relatedCountries ?? []).slice(0, 3);
+                if (powers.length === 0) return null;
+                return (
+                  <div className="border-t border-[#1a3a1a] pt-2">
+                    <div className="text-[#3a6a4a] mb-1.5 text-[9px] tracking-widest">MILITARY BALANCE</div>
+                    <div className="space-y-1">
+                      {powers.map((mp, i) => {
+                        const pct = Math.max(8, (1 - mp.pwrIndex / 1.5) / (1 - powers[0].pwrIndex / 1.5) * 100);
+                        const color = TIER_COLORS[mp.tier];
+                        return (
+                          <div key={mp.countryCode} className="flex items-center gap-1.5">
+                            <span className="text-[9px] w-20 truncate font-mono" style={{ color }}>{mp.country}</span>
+                            <div className="flex-1 h-1 bg-[#0a1a10] rounded-sm overflow-hidden">
+                              <div className="h-full rounded-sm" style={{ width: `${i === 0 ? 100 : pct}%`, backgroundColor: color }} />
+                            </div>
+                            <span className="text-[8px] font-mono text-[#334433] w-6 text-right">#{mp.rank}</span>
+                            {mp.nuclearWarheads && <span className="text-[8px] text-[#ff4400]">☢</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Wikipedia background intel */}
               {wikiLoading && (
                 <div className="border-t border-[#1a3a1a] pt-2 animate-pulse">
@@ -621,7 +649,7 @@ export default function GlobeClient({
                     <p className="text-[#4a7a5a] text-[9px] leading-relaxed line-clamp-4">{wikiData.extract}</p>
                   </div>
                   <a
-                    href={`https://en.wikipedia.org/wiki/${encodeURIComponent(selectedZone.name)}`}
+                    href={`https://en.wikipedia.org/wiki/${encodeURIComponent(wikiData.title ?? selectedZone.name)}`}
                     target="_blank" rel="noreferrer"
                     className="text-[8px] text-[#3a6a4a] hover:text-[#44aa66] mt-1 inline-block"
                   >↗ WIKIPEDIA</a>

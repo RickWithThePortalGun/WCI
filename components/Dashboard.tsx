@@ -16,8 +16,110 @@ import AIDigest from './widgets/AIDigest';
 import ConflictTimeline from './widgets/ConflictTimeline';
 import SourceTriangulation from './widgets/SourceTriangulation';
 import FlashpointPredictor from './widgets/FlashpointPredictor';
+import MilitaryBalance from './widgets/MilitaryBalance';
+import { getZoneMilitaryData, TIER_COLORS, TIER_LABELS, type MilitaryPower } from '@/lib/military-power';
 import BackgroundMusic from './widgets/BackgroundMusic';
-import { Loader2, Github } from 'lucide-react';
+import { Loader2, Github, Shield } from 'lucide-react';
+
+function ZoneMilitaryPanel({ zone }: { zone: ConflictZone }) {
+  const powers = getZoneMilitaryData(zone.factions ?? [], zone.relatedCountries ?? []);
+  const top = powers[0];
+
+  if (powers.length === 0) {
+    return (
+      <div className="p-4 text-center text-[10px] font-mono text-[#334433]">
+        NO MILITARY DATA FOR THIS ZONE
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3">
+      <div className="text-[9px] font-mono text-[#44aa66] tracking-widest mb-3">
+        ◈ COMBATANT ANALYSIS — {zone.name.toUpperCase()}
+      </div>
+
+      {/* Pairwise comparison bars */}
+      <div className="space-y-3">
+        {powers.map((mp, i) => {
+          const isStrongest = i === 0;
+          const color = TIER_COLORS[mp.tier];
+          const relStrength = top ? Math.max(5, (1 - mp.pwrIndex / 1.5) / (1 - top.pwrIndex / 1.5) * 100) : 50;
+
+          return (
+            <div key={mp.countryCode} className="border border-[#1a3320] rounded p-2 bg-[#040e06]">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{getFlagEmojiDash(mp.countryCode)}</span>
+                  <span className="text-[11px] font-mono" style={{ color }}>
+                    {mp.country.toUpperCase()}
+                  </span>
+                  {mp.nuclearWarheads && (
+                    <span className="text-[9px] text-[#ff4400]">☢ NUCLEAR</span>
+                  )}
+                </div>
+                <span className="text-[9px] font-mono text-[#334433]">
+                  GFP #{mp.rank} · {TIER_LABELS[mp.tier]}
+                </span>
+              </div>
+              {/* Relative power bar */}
+              <div className="h-1.5 bg-[#0a1a10] rounded-sm overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-sm transition-all"
+                  style={{ width: `${relStrength}%`, backgroundColor: color }}
+                />
+              </div>
+              {/* Key stats row */}
+              <div className="grid grid-cols-4 gap-1 text-[8px] font-mono text-[#445544]">
+                <div>
+                  <div className="text-[#c8e6c8]">{(mp.activeTroops).toFixed(0)}k</div>
+                  <div>TROOPS</div>
+                </div>
+                <div>
+                  <div className="text-[#c8e6c8]">{mp.tanks.toLocaleString()}</div>
+                  <div>TANKS</div>
+                </div>
+                <div>
+                  <div className="text-[#c8e6c8]">{mp.aircraft.toLocaleString()}</div>
+                  <div>AIRCRAFT</div>
+                </div>
+                <div>
+                  <div className="text-[#c8e6c8]">${mp.defenseBudgetB >= 1 ? mp.defenseBudgetB.toFixed(0) + 'B' : (mp.defenseBudgetB * 1000).toFixed(0) + 'M'}</div>
+                  <div>BUDGET</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {powers.length >= 2 && (
+        <div className="mt-3 p-2 border border-[#1a3320] rounded bg-[#060e07] text-[9px] font-mono text-[#334433]">
+          POWER RATIO:{' '}
+          <span className="text-[#ffcc00]">
+            {powers[0].country} vs {powers[1].country} ={' '}
+            {(powers[1].pwrIndex / powers[0].pwrIndex).toFixed(2)}x advantage
+          </span>
+          {' '}(lower PwrIndx = stronger)
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getFlagEmojiDash(code: string): string {
+  const flags: Record<string, string> = {
+    US: '🇺🇸', RU: '🇷🇺', CN: '🇨🇳', IN: '🇮🇳', KR: '🇰🇷',
+    GB: '🇬🇧', JP: '🇯🇵', FR: '🇫🇷', TR: '🇹🇷', DE: '🇩🇪',
+    PK: '🇵🇰', IL: '🇮🇱', EG: '🇪🇬', IR: '🇮🇷', SA: '🇸🇦',
+    AU: '🇦🇺', PL: '🇵🇱', UA: '🇺🇦', KP: '🇰🇵', TW: '🇹🇼',
+    AE: '🇦🇪', ET: '🇪🇹', JO: '🇯🇴', LB: '🇱🇧', SY: '🇸🇾',
+    SD: '🇸🇩', RW: '🇷🇼', BY: '🇧🇾', QA: '🇶🇦', PH: '🇵🇭',
+    TD: '🇹🇩', SO: '🇸🇴', MM: '🇲🇲', AO: '🇦🇴', NE: '🇳🇪',
+    ER: '🇪🇷', UG: '🇺🇬',
+  };
+  return flags[code] ?? '🏳';
+}
 
 const ConflictGlobe = dynamic(() => import('./globe/ConflictGlobe'), {
   ssr: false,
@@ -187,6 +289,72 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ── MILITARY TAB  */}
+        {activeTab === 'military' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:divide-x divide-[#1a3a1a] lg:h-full lg:overflow-hidden">
+            {/* Left: full ranking table */}
+            <div className="lg:col-span-7 flex flex-col overflow-hidden">
+              <div className="panel-header flex-shrink-0">
+                <span>GLOBAL MILITARY POWER INDEX</span>
+                <span className="text-[8px] text-[#2a4a2a] hidden sm:inline">
+                  GFP 2025 · CLICK ROW FOR DETAILS
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <MilitaryBalance
+                  highlightCountries={
+                    selectedZone
+                      ? [...(selectedZone.factions ?? []), ...(selectedZone.relatedCountries ?? [])]
+                      : []
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Right: zone-context panel */}
+            <div className="lg:col-span-5 flex flex-col divide-y divide-[#1a3a1a] overflow-hidden">
+              {/* Active zone combatant breakdown */}
+              <div className="flex-1 overflow-y-auto">
+                {selectedZone ? (
+                  <ZoneMilitaryPanel zone={selectedZone} />
+                ) : (
+                  <div className="p-6 text-center">
+                    <Shield size={32} className="text-[#1a3a1a] mx-auto mb-3" />
+                    <p className="text-[10px] font-mono text-[#334433] tracking-wider">
+                      SELECT A CONFLICT ZONE ON THE GLOBE OR DASHBOARD<br />
+                      TO SEE COMBATANT MILITARY COMPARISON
+                    </p>
+                  </div>
+                )}
+              </div>
+              {/* Tier legend */}
+              <div className="p-3 flex-shrink-0">
+                <div className="text-[9px] font-mono text-[#334433] mb-2 tracking-wider">POWER TIERS</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ['superpower', '#ff2200', 'Nuclear hegemon, global force projection'],
+                    ['major',      '#ff8800', 'Regional dominance, significant force'],
+                    ['regional',   '#ffcc00', 'Capable within theater of operations'],
+                    ['limited',    '#44aa66', 'Constrained capacity, local operations'],
+                  ] as const).map(([tier, color, desc]) => (
+                    <div key={tier} className="flex items-start gap-2">
+                      <div className="w-2 h-2 rounded-sm mt-0.5 flex-shrink-0" style={{ backgroundColor: color }} />
+                      <div>
+                        <div className="text-[9px] font-mono" style={{ color }}>{tier.toUpperCase()}</div>
+                        <div className="text-[8px] font-mono text-[#334433] leading-tight">{desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-[8px] font-mono text-[#1a3a1a]">
+                  SOURCE: GLOBALFIREPOWER.COM · SIPRI · FAS NUCLEAR NOTEBOOK 2025<br />
+                  PwrIndx: 0.0000 = PERFECT SCORE (THEORETICAL)
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── ANALYSIS TAB  */}
         {activeTab === 'analysis' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 divide-x-0 lg:divide-x divide-[#1a3a1a] lg:h-full lg:overflow-hidden">
@@ -232,7 +400,7 @@ export default function Dashboard() {
       {/* Footer */}
       <div className="flex-shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-2 border-t border-[#1a3a1a] bg-[#040c05] gap-2 sm:gap-0">
         <div className="font-mono text-[8px] text-[#1a3a1a] tracking-widest">
-          DATA: BBC · AL JAZEERA · REUTERS · GUARDIAN · DW · RFI · ISW · BELLINGCAT · UN NEWS · GDELT | OPEN SOURCE INTELLIGENCE
+          DATA: BBC · AL JAZEERA · REUTERS · GUARDIAN · DW · RFI · ISW · BELLINGCAT · UN NEWS · GDELT · GFP | OPEN SOURCE INTELLIGENCE
         </div>
         <div className="flex items-center gap-3">
           {process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME && (

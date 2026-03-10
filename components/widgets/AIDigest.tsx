@@ -28,8 +28,6 @@ export default function AIDigest({ articles }: Props) {
   const playBriefing = useCallback(() => {
     if (!digest || typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-
-    // Clean text for natural speech
     const clean = (s: string) =>
       s.replace(/\bUSA\b/g, 'the United States')
        .replace(/\bUK\b/g, 'the United Kingdom')
@@ -50,7 +48,6 @@ export default function AIDigest({ articles }: Props) {
 
     const speak = (voices: SpeechSynthesisVoice[]) => {
       const enVoices = voices.filter(v => v.lang.startsWith('en'));
-      // Ranked preference — best quality first
       const preferred = [
         'Google UK English Female',
         'Google UK English Male',
@@ -87,7 +84,7 @@ export default function AIDigest({ articles }: Props) {
     if (voices.length > 0) {
       speak(voices);
     } else {
-      // Chrome/Edge load voices asynchronously on first call
+    
       window.speechSynthesis.onvoiceschanged = () => {
         window.speechSynthesis.onvoiceschanged = null;
         speak(window.speechSynthesis.getVoices());
@@ -98,6 +95,22 @@ export default function AIDigest({ articles }: Props) {
   const stopBriefing = useCallback(() => {
     window.speechSynthesis?.cancel();
     setSpeaking(false);
+  }, []);
+
+  // Stop audio when tab is hidden or window is closed
+  useEffect(() => {
+    const stop = () => {
+      if (window.speechSynthesis?.speaking) {
+        window.speechSynthesis.cancel();
+        setSpeaking(false);
+      }
+    };
+    document.addEventListener('visibilitychange', stop);
+    window.addEventListener('beforeunload', stop);
+    return () => {
+      document.removeEventListener('visibilitychange', stop);
+      window.removeEventListener('beforeunload', stop);
+    };
   }, []);
   const lastRequestTime = useRef<number>(0);
   const isRequestInProgress = useRef<boolean>(false);

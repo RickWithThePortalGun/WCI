@@ -17,7 +17,7 @@ import ConflictTimeline from './widgets/ConflictTimeline';
 import SourceTriangulation from './widgets/SourceTriangulation';
 import FlashpointPredictor from './widgets/FlashpointPredictor';
 import MilitaryBalance from './widgets/MilitaryBalance';
-import { getZoneMilitaryData, TIER_COLORS, TIER_LABELS, type MilitaryPower } from '@/lib/military-power';
+import { getZoneMilitaryData, TIER_COLORS, TIER_LABELS } from '@/lib/military-power';
 import BackgroundMusic from './widgets/BackgroundMusic';
 import { Loader2, Github, Shield } from 'lucide-react';
 
@@ -42,7 +42,6 @@ function ZoneMilitaryPanel({ zone }: { zone: ConflictZone }) {
       {/* Pairwise comparison bars */}
       <div className="space-y-3">
         {powers.map((mp, i) => {
-          const isStrongest = i === 0;
           const color = TIER_COLORS[mp.tier];
           const relStrength = top ? Math.max(5, (1 - mp.pwrIndex / 1.5) / (1 - top.pwrIndex / 1.5) * 100) : 50;
 
@@ -116,7 +115,7 @@ function getFlagEmojiDash(code: string): string {
     AE: '🇦🇪', ET: '🇪🇹', JO: '🇯🇴', LB: '🇱🇧', SY: '🇸🇾',
     SD: '🇸🇩', RW: '🇷🇼', BY: '🇧🇾', QA: '🇶🇦', PH: '🇵🇭',
     TD: '🇹🇩', SO: '🇸🇴', MM: '🇲🇲', AO: '🇦🇴', NE: '🇳🇪',
-    ER: '🇪🇷', UG: '🇺🇬',
+    ER: '🇪🇷', UG: '🇺🇬', IQ: '🇮🇶', TH: '🇹🇭', EE: '🇪🇪', NT: '🛡️',
   };
   return flags[code] ?? '🏳';
 }
@@ -199,10 +198,16 @@ export default function Dashboard() {
           {/* Left: Globe + Risk */}
           <div className="lg:col-span-4 flex flex-col divide-y divide-[#1a3a1a] overflow-hidden">
             <div className="flex-1 overflow-hidden min-h-[280px] lg:min-h-0">
-              <div className="panel-header">
+              <button
+                className="panel-header w-full text-left hover:bg-[#0a1a0c] transition-colors group"
+                onClick={() => setActiveTab('globe')}
+                title="Open full-screen globe"
+              >
                 <span>THREAT GLOBE</span>
-                <span className="text-[8px] text-[#2a4a2a] hidden sm:inline">CLICK ZONE FOR INTEL</span>
-              </div>
+                <span className="text-[8px] font-mono text-[#2a4a2a] group-hover:text-[#44aa66] transition-colors tracking-wider">
+                  EXPAND ↗
+                </span>
+              </button>
               <div style={{ height: 'calc(100% - 37px)' }}>
                 <ConflictGlobe onSelectZone={setSelectedZone} selectedZone={selectedZone} />
               </div>

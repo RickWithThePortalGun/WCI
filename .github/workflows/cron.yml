@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Call /api/telegram/cron
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -sL -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/telegram/cron" \
             --max-time 30)

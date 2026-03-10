@@ -48,7 +48,7 @@ jobs:
         run: |
           echo "Waiting for deployment to go live..."
           for i in $(seq 1 24); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            STATUS=$(curl -sL -o /dev/null -w "%{http_code}" \
               "$APP_URL/api/news" --max-time 10 2>/dev/null || echo "000")
             if [ "$STATUS" = "200" ]; then
               echo "✓ Deployment live after attempt $i"

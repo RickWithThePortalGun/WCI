@@ -27,9 +27,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env
 .env*.local
-.env.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -63,3 +61,4 @@ logs
 # pnpm-lock.yaml
 # bun.lock
 LOGO_PROMPTS.md
+config.bat

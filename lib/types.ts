@@ -180,6 +180,15 @@ export interface TelegramChannelMessage {
   text: string;
   date: string;
   messageUrl: string;
+  views?: number;
+  forwards?: number;
+  replies?: number;
+  reactions?: Array<{ emoji: string; count: number }>;
+  media?: {
+    type: 'photo' | 'video' | 'document' | 'sticker' | 'audio' | 'link' | 'unknown';
+    thumbUrl?: string;
+    url?: string;
+  };
 }
 
 export interface AIDigestResponse {

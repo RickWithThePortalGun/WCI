@@ -54,11 +54,61 @@ export default function TelegramChannelFeed() {
             rel="noopener noreferrer"
             className="block p-2 rounded border border-[#15301d] hover:border-[#2a5a3a] hover:bg-[#0a1a0c] transition-colors"
           >
-            <div className="text-[10px] leading-snug text-[#b7d8b8] line-clamp-4">
-              {msg.text || '(media-only message)'}
-            </div>
-            <div className="mt-1 text-[8px] font-mono text-[#3a6a4a]">
-              {new Date(msg.date).toUTCString()}
+            <div className="flex gap-2">
+              {msg.media?.type === 'video' && msg.media.url ? (
+                <video
+                  src={msg.media.url}
+                  className="w-24 h-14 object-cover rounded opacity-90 flex-shrink-0 border border-[#15301d] bg-black"
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
+              ) : msg.media?.type === 'photo' && (msg.media.url || msg.media.thumbUrl) ? (
+                <img
+                  src={msg.media.url ?? msg.media.thumbUrl}
+                  alt=""
+                  className="w-24 h-14 object-cover rounded opacity-90 flex-shrink-0 border border-[#15301d]"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              ) : msg.media?.thumbUrl ? (
+                <img
+                  src={msg.media.thumbUrl}
+                  alt=""
+                  className="w-24 h-14 object-cover rounded opacity-80 flex-shrink-0 border border-[#15301d]"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] leading-snug text-[#b7d8b8] line-clamp-4">
+                  {msg.text}
+                </div>
+                <div className="mt-1 flex items-center gap-2 flex-wrap">
+                  <div className="text-[8px] font-mono text-[#3a6a4a]">
+                    {new Date(msg.date).toUTCString()}
+                  </div>
+                  {typeof msg.views === 'number' && (
+                    <div className="text-[8px] font-mono text-[#334433]">
+                      VIEWS {msg.views.toLocaleString()}
+                    </div>
+                  )}
+                  {msg.media?.type && msg.media.type !== 'unknown' && (
+                    <div className="text-[8px] font-mono text-[#334433]">
+                      {msg.media.type.toUpperCase()}
+                    </div>
+                  )}
+                  {msg.reactions?.length ? (
+                    <div className="text-[8px] font-mono text-[#334433]">
+                      {msg.reactions
+                        .slice(0, 3)
+                        .map(r => `${r.emoji}${r.count}`)
+                        .join(' ')}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </a>
         ))}

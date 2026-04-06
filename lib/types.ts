@@ -173,6 +173,15 @@ export interface YouTubeAPIResponse {
   fetchedAt: string;
 }
 
+export interface TelegramChannelMessage {
+  id: string;
+  channel: string;
+  channelUrl: string;
+  text: string;
+  date: string;
+  messageUrl: string;
+}
+
 export interface AIDigestResponse {
   summary: string;
   keyEvents: string[];

@@ -17,6 +17,7 @@ import ConflictTimeline from './widgets/ConflictTimeline';
 import SourceTriangulation from './widgets/SourceTriangulation';
 import FlashpointPredictor from './widgets/FlashpointPredictor';
 import MilitaryBalance from './widgets/MilitaryBalance';
+import TelegramChannelFeed from './widgets/TelegramChannelFeed';
 import { getZoneMilitaryData, TIER_COLORS, TIER_LABELS } from '@/lib/military-power';
 import BackgroundMusic from './widgets/BackgroundMusic';
 import { Loader2, Github, Shield } from 'lucide-react';
@@ -282,8 +283,13 @@ export default function Dashboard() {
 
         {/* ── INTELLIGENCE TAB */}
         {activeTab === 'news' && (
-          <div className="p-4 lg:h-full lg:overflow-hidden">
-            <NewsFeed articles={articles} loading={newsLoading} />
+          <div className="p-4 lg:h-full lg:overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-8 min-h-[420px] lg:min-h-0 lg:h-full">
+              <NewsFeed articles={articles} loading={newsLoading} />
+            </div>
+            <div className="lg:col-span-4 min-h-[420px] lg:min-h-0 lg:h-full">
+              <TelegramChannelFeed />
+            </div>
           </div>
         )}
 

@@ -99,6 +99,12 @@ lib/
 ### YouTube Channels (no API key needed)
 - BBC News, Al Jazeera English, DW News, France 24, WION, TRT World
 
+### Telegram Channel Feed (Vercel-friendly JavaScript)
+- Channel: `https://t.me/Middle_East_Spectator`
+- The app fetches the public Telegram channel page (`https://t.me/s/Middle_East_Spectator`) from `GET /api/telegram/mes`
+- No Python runtime, no external worker, no session files required
+- Messages are shown in the Intelligence tab via the `TelegramChannelFeed` widget
+
 ---
 
 ## Conflict Zones on Globe
